@@ -9,6 +9,7 @@ import com.skillscan.ai.model.User;
 import com.skillscan.ai.repository.UserRepository;
 import com.skillscan.ai.services.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,14 +24,14 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponseDTO createUser(UserRequestDTO dto) {
 
-
-        if (userRepository.existsByEmail(dto.getEmail())) {
+       final User user = UserMapper.toEntity(dto);
+        try {
+           final User savedUser = userRepository.save(user);
+            return UserMapper.toDTO(savedUser);
+        } catch (DataIntegrityViolationException ex) {
             throw new EmailAlreadyExistsException("Email already exists");
         }
 
-        User user = UserMapper.toEntity(dto);
-        User savedUser = userRepository.save(user);
-        return UserMapper.toDTO(savedUser);
     }
 
 
