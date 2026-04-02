@@ -1,0 +1,25 @@
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: skillscan_postgres
+
+    environment:
+      POSTGRES_DB: skillscan_db          # Same as application.yml
+      POSTGRES_USER: skillscan_user      # Same as application.yml
+      POSTGRES_PASSWORD: skillscan_password  # Same as application.yml
+
+    ports:
+      - "5433:5432"  # Expose DB port
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Persist data
+
+    networks:
+      - skillscan_network
+
+volumes:
+  postgres_data:
+
+networks:
+  skillscan_network:

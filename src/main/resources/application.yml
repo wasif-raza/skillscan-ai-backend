@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: skillscan-ai-backend  # Application name
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/skillscan_db  # Database URL
+    username: skillscan_user  # DB username
+    password: skillscan_password  # DB password
+    driver-class-name: org.postgresql.Driver  # PostgreSQL driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none  # Disable auto table creation (use Flyway)
+    show-sql: true  # Show SQL queries in console
+    properties:
+      hibernate:
+        format_sql: true  # Format SQL output
+        jdbc:
+          time_zone: Asia/Kolkata  # Set DB timezone
+
+  jackson:
+    time-zone: Asia/Kolkata  # JSON timezone
+
+  flyway:
+    enabled: true  # Enable Flyway migrations
+    baseline-on-migrate: true  # Handle existing DB safely
+
+
+# Set App to port 8081
+server:
+  port: 8081
