@@ -2,11 +2,14 @@ package com.skillscan.ai.services.impl;
 
 import com.skillscan.ai.dto.request.UserRequestDTO;
 import com.skillscan.ai.dto.response.UserResponseDTO;
+import com.skillscan.ai.exception.EmailAlreadyExistsException;
+import com.skillscan.ai.exception.UserNotFoundException;
 import com.skillscan.ai.mapper.UserMapper;
 import com.skillscan.ai.model.User;
 import com.skillscan.ai.repository.UserRepository;
 import com.skillscan.ai.services.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,9 +23,15 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     @Override
     public UserResponseDTO createUser(UserRequestDTO dto) {
-        User user = UserMapper.toEntity(dto);
-        User savedUser = userRepository.save(user);
-        return UserMapper.toDTO(savedUser);
+
+       final User user = UserMapper.toEntity(dto);
+        try {
+           final User savedUser = userRepository.save(user);
+            return UserMapper.toDTO(savedUser);
+        } catch (DataIntegrityViolationException ex) {
+            throw new EmailAlreadyExistsException("Email already exists");
+        }
+
     }
 
 
@@ -30,7 +39,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponseDTO getUserById(UUID id) {
         User user = userRepository.findById(id)
-                .orElseThrow(()->new RuntimeException("user not found"));
+                .orElseThrow(()->new UserNotFoundException("User not found with id: " + id));
         return UserMapper.toDTO(user);
     }
 
