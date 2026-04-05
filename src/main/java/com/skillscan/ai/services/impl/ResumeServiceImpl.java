@@ -102,7 +102,7 @@ public class ResumeServiceImpl implements ResumeService {
 
             resumeRepository.save(resume);
 
-        } catch (IOException ex) {
+        } catch (Exception ex) {
 
             //  Cleanup file if DB save fails
             try {
