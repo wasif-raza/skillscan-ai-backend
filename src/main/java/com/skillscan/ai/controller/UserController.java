@@ -3,8 +3,8 @@ package com.skillscan.ai.controller;
 import com.skillscan.ai.dto.request.UserRequestDTO;
 import com.skillscan.ai.dto.response.UserResponseDTO;
 import com.skillscan.ai.services.UserService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,28 +13,32 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@CrossOrigin("*")
 public class UserController {
 
     private final UserService userService;
 
+    //  Create user
     @PostMapping
-    public UserResponseDTO createUser(@Valid  @RequestBody UserRequestDTO dto){
-        return userService.createUser(dto);
+    public ResponseEntity<UserResponseDTO> createUser(@RequestBody UserRequestDTO dto) {
+        return ResponseEntity.ok(userService.createUser(dto));
     }
 
+    //  Get user by ID
     @GetMapping("/{id}")
-    public UserResponseDTO getUser(@PathVariable UUID id){
-        return userService.getUserById(id);
+    public ResponseEntity<UserResponseDTO> getUser(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.getUserById(id));
     }
 
+    //  Get all users
     @GetMapping
-    public List<UserResponseDTO> getAllUsers() {
-        return userService.getAllUsers();
+    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
+        return ResponseEntity.ok(userService.getAllUsers());
     }
+
+    //  Delete user (UPDATED)
     @DeleteMapping("/{id}")
-    public String deleteUser(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
         userService.deleteUser(id);
-        return "User deleted successfully";
+        return ResponseEntity.noContent().build();
     }
 }

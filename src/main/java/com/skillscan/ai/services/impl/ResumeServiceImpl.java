@@ -1,6 +1,5 @@
 package com.skillscan.ai.services.impl;
 
-
 import com.skillscan.ai.exception.BadRequestException;
 import com.skillscan.ai.exception.BaseException;
 import com.skillscan.ai.exception.UserNotFoundException;
@@ -9,13 +8,21 @@ import com.skillscan.ai.model.User;
 import com.skillscan.ai.repository.ResumeRepository;
 import com.skillscan.ai.repository.UserRepository;
 import com.skillscan.ai.services.ResumeService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -26,66 +33,148 @@ public class ResumeServiceImpl implements ResumeService {
     private final ResumeRepository resumeRepository;
     private final UserRepository userRepository;
 
-    //  Use stable path
-    private static final String UPLOAD_DIR = "C:/temp/uploads/";
+    private static final Logger log = LoggerFactory.getLogger(ResumeServiceImpl.class);
+    private static final String PDF_CONTENT_TYPE = "application/pdf";
+
+    @Value("${file.upload-dir}")
+    private String uploadDir;
+
+    @Value("${file.max-size}")
+    private DataSize maxFileSize;
+    private Path uploadPath;
+
+    @PostConstruct
+    public void init() {
+        try {
+            this.uploadPath = Paths.get(uploadDir)
+                    .toAbsolutePath()
+                    .normalize();
+
+            Files.createDirectories(uploadPath); //  atomic & cross-platform
+        } catch (IOException ex) {
+            throw new BaseException("Could not initialize upload directory",
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 
     @Override
     public void uploadResume(UUID userId, MultipartFile file) {
 
-        //  Validate User
+        //  Validate user
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        //  Validate File
-        if (file == null || file.isEmpty()) {
-            throw new BadRequestException("File must not be empty");
+        //  Validate file
+        validateFile(file);
+
+        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+
+        //  Prevent path traversal
+        if (originalFileName.contains("..")) {
+            throw new BadRequestException("Invalid file path");
         }
 
-        String originalFileName = file.getOriginalFilename();
+        // Generate unique filename
+        String safeFileName= UUID.randomUUID() + ".pdf";
 
-        if (originalFileName == null || originalFileName.trim().isEmpty()) {
-            throw new BadRequestException("Invalid file name");
-        }
+        //  Resolve secure path
+        Path targetLocation = uploadPath.resolve(safeFileName).normalize();
 
-        //  Validate PDF (extension-based, more reliable)
-        if (!originalFileName.toLowerCase().endsWith(".pdf")) {
-            throw new BadRequestException("Only PDF files are allowed");
+        // Check file stays inside upload directory
+        if (!targetLocation.startsWith(uploadPath)) {
+            throw new BadRequestException("Invalid file path");
         }
 
         try {
-            // Create directory if not exists
-            File directory = new File(UPLOAD_DIR);
-            if (!directory.exists()) {
-                boolean created = directory.mkdirs();
-                if (!created) {
-                    throw new BaseException("Failed to create upload directory", HttpStatus.INTERNAL_SERVER_ERROR);
-                }
-            }
 
-            //  Generate unique file name
-            String uniqueFileName = UUID.randomUUID() + "_" + originalFileName;
+            //  Save file
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
-            String filePath = UPLOAD_DIR + uniqueFileName;
-
-
-            // Save file
-            File destinationFile = new File(filePath);
-            file.transferTo(destinationFile);
-
-            //  Save metadata to DB
+            //  Save metadata
             Resume resume = Resume.builder()
                     .id(UUID.randomUUID())
                     .user(user)
                     .fileName(originalFileName)
-                    .fileType(file.getContentType())
-                    .filePath(filePath)
+                    .fileType(PDF_CONTENT_TYPE)
+                    .filePath(targetLocation.toString())
                     .uploadedAt(LocalDateTime.now())
                     .build();
 
             resumeRepository.save(resume);
 
+        } catch (Exception ex) {
+
+            //  Cleanup file if DB save fails
+            try {
+                Files.deleteIfExists(targetLocation);
+            } catch (IOException cleanupEx) {
+                log.error("Failed to delete file: {}", cleanupEx.getMessage());
+            }
+            throw new BaseException("Failed to upload resume: " + ex.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    // File deletion logic (used by UserService)
+    @Override
+    public void deleteResumeFile(String filePath) {
+        try {
+            Files.deleteIfExists(Paths.get(filePath));
         } catch (IOException e) {
-            throw new BaseException("Failed to upload resume", HttpStatus.INTERNAL_SERVER_ERROR);
+            log.error("Failed to delete file: {}", filePath);
+        }
+    }
+
+    //  Validation logic
+    private void validateFile(MultipartFile file) {
+
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("File must not be empty");
+        }
+
+        //  Size validation (from config)
+        if (file.getSize() > maxFileSize.toBytes()) {
+            throw new BadRequestException(
+                    "File size must be less than " + maxFileSize.toMegabytes() + "MB"
+            );
+        }
+
+        String fileName = file.getOriginalFilename();
+
+        if (fileName == null || fileName.trim().isEmpty()) {
+            throw new BadRequestException("Invalid file name");
+        }
+
+        //  Extension check
+        if (!fileName.toLowerCase().endsWith(".pdf")) {
+            throw new BadRequestException("Only PDF files are allowed");
+        }
+
+        //  MIME type check
+        if (file.getContentType() == null ||
+                !file.getContentType().equalsIgnoreCase(PDF_CONTENT_TYPE)) {
+            throw new BadRequestException("Invalid file type");
+        }
+        //  Real PDF validation
+        validatePdfContent(file);
+    }
+    private void validatePdfContent(MultipartFile file) {
+        try (InputStream is = file.getInputStream()) {
+
+            byte[] header = new byte[5];
+            int read = is.read(header);
+
+            if (read != 5) {
+                throw new BadRequestException("Invalid PDF file");
+            }
+
+            String headerStr = new String(header, StandardCharsets.US_ASCII);
+
+            if (!headerStr.equals("%PDF-")) {
+                throw new BadRequestException("Invalid PDF file");
+            }
+
+        } catch (IOException e) {
+            throw new BadRequestException("Failed to read file");
         }
     }
 }
