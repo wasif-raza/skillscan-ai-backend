@@ -85,10 +85,10 @@ public class ResumeServiceImpl implements ResumeService {
             throw new BadRequestException("Invalid file path");
         }
 
-        try {
+        try(InputStream is  = file.getInputStream()) {
 
             //  Save file
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(is, targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
             //  Save metadata
             Resume resume = Resume.builder()
@@ -102,14 +102,15 @@ public class ResumeServiceImpl implements ResumeService {
 
             resumeRepository.save(resume);
 
-        } catch (Exception ex) {
+        } catch (IOException ex) {
 
             //  Cleanup file if DB save fails
             try {
                 Files.deleteIfExists(targetLocation);
             } catch (IOException cleanupEx) {
-                log.error("Failed to delete file: {}", cleanupEx.getMessage());
+                log.error("Failed to delete file during cleanup: {}", targetLocation);
             }
+            log.error("Resume upload failed for userId: {}", userId, ex);
             throw new BaseException("Failed to upload resume: " + ex.getMessage(),
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
