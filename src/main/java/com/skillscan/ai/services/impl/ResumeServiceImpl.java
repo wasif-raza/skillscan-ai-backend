@@ -165,15 +165,21 @@ public class ResumeServiceImpl implements ResumeService {
         try (InputStream is = file.getInputStream()) {
 
             byte[] header = new byte[5];
-            int read = is.read(header);
+            int totalRead = 0;
 
-            if (read != 5) {
-                throw new BadRequestException("Invalid PDF file");
+            while (totalRead < 5) {
+                int bytesRead = is.read(header, totalRead, 5 - totalRead);
+
+                if (bytesRead == -1) {
+                    throw new BadRequestException("Invalid PDF file");
+                }
+
+                totalRead += bytesRead;
             }
 
             String headerStr = new String(header, StandardCharsets.US_ASCII);
 
-            if (!headerStr.equals("%PDF-")) {
+            if (!"%PDF-".equals(headerStr)) {
                 throw new BadRequestException("Invalid PDF file");
             }
 
