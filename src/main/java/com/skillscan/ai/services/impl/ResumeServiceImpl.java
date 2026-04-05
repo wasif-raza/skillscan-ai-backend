@@ -118,6 +118,10 @@ public class ResumeServiceImpl implements ResumeService {
     @Override
     public void deleteResumeFile(String filePath) {
         try {
+            Path targetPath = Paths.get(filePath).toAbsolutePath().normalize();
+            if (!targetPath.startsWith(uploadPath)) {
+                throw new BadRequestException("Invalid file path");
+            }
             Files.deleteIfExists(Paths.get(filePath));
         } catch (IOException e) {
             log.error("Failed to delete file: {}", filePath);

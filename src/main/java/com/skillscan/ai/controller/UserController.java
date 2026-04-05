@@ -3,6 +3,7 @@ package com.skillscan.ai.controller;
 import com.skillscan.ai.dto.request.UserRequestDTO;
 import com.skillscan.ai.dto.response.UserResponseDTO;
 import com.skillscan.ai.services.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +20,7 @@ public class UserController {
 
     //  Create user
     @PostMapping
-    public ResponseEntity<UserResponseDTO> createUser(@RequestBody UserRequestDTO dto) {
+    public ResponseEntity<UserResponseDTO> createUser(@Valid @RequestBody UserRequestDTO dto) {
         return ResponseEntity.ok(userService.createUser(dto));
     }
 
