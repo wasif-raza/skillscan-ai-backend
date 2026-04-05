@@ -1,31 +1,41 @@
 spring:
   application:
-    name: skillscan-ai-backend  # Application name
+    name: skillscan-ai-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/skillscan_db  # Database URL
-    username: skillscan_user  # DB username
-    password: skillscan_password  # DB password
-    driver-class-name: org.postgresql.Driver  # PostgreSQL driver
+    url: jdbc:postgresql://localhost:5433/skillscan_db
+    username: skillscan_user
+    password: skillscan_password
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: none  # Disable auto table creation (use Flyway)
-    show-sql: true  # Show SQL queries in console
+      ddl-auto: none
+    show-sql: true
     properties:
       hibernate:
-        format_sql: true  # Format SQL output
+        format_sql: true
         jdbc:
-          time_zone: Asia/Kolkata  # Set DB timezone
+          time_zone: Asia/Kolkata
 
   jackson:
-    time-zone: Asia/Kolkata  # JSON timezone
+    time-zone: Asia/Kolkata
 
   flyway:
-    enabled: true  # Enable Flyway migrations
-    baseline-on-migrate: true  # Handle existing DB safely
+    enabled: true
+    baseline-on-migrate: true
 
+  #  Multipart config
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 1MB
 
-# Set App to port 8081
+# File upload path config
+file:
+  upload-dir: ${UPLOAD_DIR:/var/data/resumes}
+  max-size: 1MB
+
+# Server config
 server:
   port: 8081
