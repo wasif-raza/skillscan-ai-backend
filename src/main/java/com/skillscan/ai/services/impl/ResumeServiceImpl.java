@@ -1,12 +1,15 @@
 package com.skillscan.ai.services.impl;
 
+import com.skillscan.ai.dto.response.ResumeUploadResponse;
 import com.skillscan.ai.exception.BadRequestException;
 import com.skillscan.ai.exception.BaseException;
 import com.skillscan.ai.exception.UserNotFoundException;
+import com.skillscan.ai.mapper.ResumeMapper;
 import com.skillscan.ai.model.Resume;
 import com.skillscan.ai.model.User;
 import com.skillscan.ai.repository.ResumeRepository;
 import com.skillscan.ai.repository.UserRepository;
+import com.skillscan.ai.services.ResumeParserService;
 import com.skillscan.ai.services.ResumeService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,7 @@ public class ResumeServiceImpl implements ResumeService {
 
     private final ResumeRepository resumeRepository;
     private final UserRepository userRepository;
+    private final ResumeParserService parserService;
 
     private static final Logger log = LoggerFactory.getLogger(ResumeServiceImpl.class);
     private static final String PDF_CONTENT_TYPE = "application/pdf";
@@ -58,7 +62,7 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
-    public void uploadResume(UUID userId, MultipartFile file) {
+    public ResumeUploadResponse uploadResume(UUID userId, MultipartFile file) {
 
         //  Validate user
         User user = userRepository.findById(userId)
@@ -90,17 +94,38 @@ public class ResumeServiceImpl implements ResumeService {
             //  Save file
             Files.copy(is, targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
+            String extractedText = "";
+            try {
+                extractedText = parserService.extractText(targetLocation);
+
+                if (extractedText.isBlank()) {
+                    log.info("Resume parsed but content is empty: {}", targetLocation);
+                }
+                int maxLength = 10000;
+
+                if (extractedText.length() > maxLength) {
+                    extractedText = extractedText.substring(0, maxLength);
+                    log.info("Resume content truncated to {} characters", maxLength);
+                }
+
+            } catch (Exception e) {
+                // Parsing should NOT break upload
+                log.warn("Parsing failed for file: {}", targetLocation);
+            }
+
+
             //  Save metadata
             Resume resume = Resume.builder()
-                    .id(UUID.randomUUID())
                     .user(user)
                     .fileName(originalFileName)
                     .fileType(PDF_CONTENT_TYPE)
                     .filePath(targetLocation.toString())
                     .uploadedAt(LocalDateTime.now())
+                    .content(extractedText)
                     .build();
 
-            resumeRepository.save(resume);
+           Resume savedResume = resumeRepository.save(resume);
+            return ResumeMapper.toDTO(savedResume, "Resume uploaded successfully");
 
         } catch (Exception ex) {
 
