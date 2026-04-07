@@ -1,17 +1,18 @@
 package com.skillscan.ai.mapper;
 
-import com.skillscan.ai.dto.response.ResumeResponseDTO;
+import com.skillscan.ai.dto.response.ResumeUploadResponse;
 import com.skillscan.ai.model.Resume;
 
 public class ResumeMapper {
 
-    public static ResumeResponseDTO toDTO(Resume resume) {
-        return ResumeResponseDTO.builder()
-                .id(resume.getId())
+    // Prevent instantiation
+    private ResumeMapper() {}
+
+    public static ResumeUploadResponse toDTO(Resume resume, String message) {
+        return ResumeUploadResponse.builder()
+                .resumeId(resume.getId())
                 .fileName(resume.getFileName())
-                .fileType(resume.getFileType())
-                .fileUrl("/uploads/" + resume.getFileName())
-                .uploadedAt(resume.getUploadedAt())
+                .message(message)
                 .build();
     }
 }

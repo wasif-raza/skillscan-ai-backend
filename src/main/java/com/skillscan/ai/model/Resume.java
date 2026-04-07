@@ -2,6 +2,7 @@ package com.skillscan.ai.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -16,6 +17,8 @@ import java.util.UUID;
 public class Resume {
 
     @Id
+    @GeneratedValue
+    @UuidGenerator
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -27,5 +30,8 @@ public class Resume {
     private  String filePath;
 
     private LocalDateTime uploadedAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String content;
 
 }
