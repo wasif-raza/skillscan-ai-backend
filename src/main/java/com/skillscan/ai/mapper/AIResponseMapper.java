@@ -1,5 +1,6 @@
 package com.skillscan.ai.mapper;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skillscan.ai.dto.response.AIResponse;
@@ -7,6 +8,7 @@ import com.skillscan.ai.model.ResumeAnalysis;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,11 +33,11 @@ public class AIResponseMapper {
             return ResumeAnalysis.builder()
                     .resumeId(resumeId)
                     .score(response.getScore())
-                    .skillsJson(objectMapper.writeValueAsString(response.getSkills()))
-                    .keywordsJson(objectMapper.writeValueAsString(response.getKeywords()))
-                    .suggestionsJson(objectMapper.writeValueAsString(response.getSuggestions()))
+                    .skillsJson(objectMapper.writeValueAsString(response.getSkills() != null ? response.getSkills() : Collections.emptyList()))
+                    .keywordsJson(objectMapper.writeValueAsString(response.getKeywords() != null ? response.getKeywords() : Collections.emptyList()))
+                    .suggestionsJson(objectMapper.writeValueAsString(response.getSuggestions() != null ? response.getSuggestions() : Collections.emptyList()))
                     .build();
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to map AIResponse to entity", e);
         }
     }

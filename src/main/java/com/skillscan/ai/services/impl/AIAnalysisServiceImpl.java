@@ -1,7 +1,8 @@
-package com.skillscan.ai.service.impl;
+package com.skillscan.ai.services.impl;
 
 import com.skillscan.ai.client.OpenAIClient;
 import com.skillscan.ai.dto.response.AIResponse;
+import com.skillscan.ai.exception.ResourceNotFoundException;
 import com.skillscan.ai.mapper.AIResponseMapper;
 import com.skillscan.ai.model.Resume;
 import com.skillscan.ai.model.ResumeAnalysis;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -22,39 +24,63 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
     private final OpenAIClient openAIClient;
     private final AIResponseMapper aiResponseMapper;
 
+    //  Lock per resumeId
+    private final ConcurrentHashMap<UUID, Object> locks = new ConcurrentHashMap<>();
+
     @Override
     public AIResponse analyze(UUID resumeId) {
 
-        // 1 Check DB (CACHE)
+        //  Fast path (cache check)
         return resumeAnalysisRepository.findByResumeId(resumeId)
                 .map(aiResponseMapper::mapToResponse)
+                .orElseGet(() -> processWithLock(resumeId));
+    }
 
-                //  If not found call AI
-                .orElseGet(() -> {
+    private AIResponse processWithLock(UUID resumeId) {
 
-                    Resume resume = resumeRepository.findById(resumeId)
-                            .orElseThrow(() -> new RuntimeException("Resume not found"));
+        Object lock = locks.computeIfAbsent(resumeId, k -> new Object());
 
-                    String prompt = buildPrompt(resume.getContent());
+        synchronized (lock) {
+            try {
+                //  Double-check inside lock
+                return resumeAnalysisRepository.findByResumeId(resumeId)
+                        .map(aiResponseMapper::mapToResponse)
+                        .orElseGet(() -> {
 
-                    String aiRawResponse = openAIClient.callAI(prompt);
+                            Resume resume = resumeRepository.findById(resumeId)
+                                    .orElseThrow(() -> new ResourceNotFoundException("Resume not found"));
 
-                    AIResponse aiResponse =
-                            aiResponseMapper.mapToAIResponse(aiRawResponse);
+                            String content = resume.getContent();
+                            if (content == null || content.isBlank()) {
+                                throw new IllegalStateException("Resume content is empty or not yet parsed");
+                            }
 
-                    // 3️Save to DB
-                    ResumeAnalysis entity =
-                            aiResponseMapper.mapToEntity(resumeId, aiResponse);
+                            String prompt = buildPrompt(content);
 
-                    resumeAnalysisRepository.save(entity);
+                            String aiRawResponse = openAIClient.callAI(prompt);
 
-                    return aiResponse;
-                });
+                            AIResponse aiResponse =
+                                    aiResponseMapper.mapToAIResponse(aiRawResponse);
+
+                            //  Save to DB
+                            ResumeAnalysis entity =
+                                    aiResponseMapper.mapToEntity(resumeId, aiResponse);
+
+                            resumeAnalysisRepository.save(entity);
+
+                            return aiResponse;
+                        });
+
+            } finally {
+                //  Prevent memory leak
+                locks.remove(resumeId);
+            }
+        }
     }
 
     private String buildPrompt(String resumeText) {
 
-        //  limit text size (VERY IMPORTANT)
+        //  Limit text size
         String trimmed = resumeText.length() > 4000
                 ? resumeText.substring(0, 4000)
                 : resumeText;

@@ -17,6 +17,7 @@ public class AIAnalysisController {
 
     @PostMapping("/analyze/{resumeId}")
     public ResponseEntity<AIResponse> analyze(@PathVariable UUID resumeId) {
-        return ResponseEntity.ok(aiAnalysisService.analyze(resumeId));
+        AIResponse response = aiAnalysisService.analyze(resumeId);
+        return ResponseEntity.ok(response);
     }
 }
