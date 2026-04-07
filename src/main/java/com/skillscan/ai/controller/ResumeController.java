@@ -1,6 +1,7 @@
 package com.skillscan.ai.controller;
 
 
+import com.skillscan.ai.dto.response.ResumeUploadResponse;
 import com.skillscan.ai.services.ResumeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,13 +21,13 @@ public class ResumeController {
 
     //  Upload Resume
     @PostMapping("/{userId}")
-    public ResponseEntity<String> uploadResume(
+    public ResponseEntity<ResumeUploadResponse> uploadResume(
             @PathVariable UUID userId,
             @RequestParam("file") MultipartFile file
     ) {
-        resumeService.uploadResume(userId, file);
+        ResumeUploadResponse response = resumeService.uploadResume(userId, file);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body("Resume uploaded successfully");
+                .body(response);
     }
     //  todo Resume (Single)
 //    @DeleteMapping("/{resumeId}")
