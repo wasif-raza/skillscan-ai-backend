@@ -110,7 +110,7 @@ public class ResumeServiceImpl implements ResumeService {
 
             } catch (Exception e) {
                 // Parsing should NOT break upload
-                log.warn("Parsing failed for file: {}", targetLocation);
+                log.warn("Parsing failed for file: {}", targetLocation, e);
             }
 
 
