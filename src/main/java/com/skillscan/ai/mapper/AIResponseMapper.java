@@ -18,48 +18,50 @@ public class AIResponseMapper {
 
     private final ObjectMapper objectMapper;
 
-    // AI JSON → DTO
-    public AIResponse mapToAIResponse(String aiRawResponse) {
-        try {
-            return objectMapper.readValue(aiRawResponse, AIResponse.class);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to parse AI response", e);
-        }
-    }
-
-    // DTO → Entity
+    //  DTO → Entity
     public ResumeAnalysis mapToEntity(UUID resumeId, AIResponse response) {
         try {
             return ResumeAnalysis.builder()
                     .resumeId(resumeId)
                     .score(response.getScore())
-                    .skillsJson(objectMapper.writeValueAsString(response.getSkills() != null ? response.getSkills() : Collections.emptyList()))
-                    .keywordsJson(objectMapper.writeValueAsString(response.getKeywords() != null ? response.getKeywords() : Collections.emptyList()))
-                    .suggestionsJson(objectMapper.writeValueAsString(response.getSuggestions() != null ? response.getSuggestions() : Collections.emptyList()))
+                    .skillsJson(toJson(response.getSkills()))
+                    .keywordsJson(toJson(response.getKeywords()))
+                    .suggestionsJson(toJson(response.getSuggestions()))
                     .build();
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Failed to map AIResponse to entity", e);
         }
     }
 
-    // Entity → DTO
+    //  Entity → DTO
     public AIResponse mapToResponse(ResumeAnalysis entity) {
         try {
             AIResponse response = new AIResponse();
             response.setScore(entity.getScore());
 
-            response.setSkills(objectMapper.readValue(
-                    entity.getSkillsJson(), new TypeReference<List<String>>() {}));
-
-            response.setKeywords(objectMapper.readValue(
-                    entity.getKeywordsJson(), new TypeReference<List<String>>() {}));
-
-            response.setSuggestions(objectMapper.readValue(
-                    entity.getSuggestionsJson(), new TypeReference<List<String>>() {}));
+            response.setSkills(fromJson(entity.getSkillsJson()));
+            response.setKeywords(fromJson(entity.getKeywordsJson()));
+            response.setSuggestions(fromJson(entity.getSuggestionsJson()));
 
             return response;
+
         } catch (Exception e) {
             throw new RuntimeException("Failed to map entity to AIResponse", e);
         }
+    }
+
+    //  Convert List → JSON String (safe)
+    private String toJson(List<String> list) throws JsonProcessingException {
+        return objectMapper.writeValueAsString(
+                list != null ? list : Collections.emptyList()
+        );
+    }
+
+    //  Convert JSON String → List (safe)
+    private List<String> fromJson(String json) throws JsonProcessingException {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        return objectMapper.readValue(json, new TypeReference<List<String>>() {});
     }
 }
