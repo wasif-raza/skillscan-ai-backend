@@ -5,7 +5,6 @@ package com.skillscan.ai.exception;
 import com.skillscan.ai.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.Logger;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,7 +40,7 @@ public class GlobalExceptionHandler {
                 .getFieldErrors()
                 .stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .findFirst()
+                .reduce((msg1, msg2) -> msg1 + ", " + msg2)
                 .orElse("Validation error");
 
         ErrorResponse response = ErrorResponse.builder()
@@ -58,7 +57,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleOtherExceptions(Exception ex, HttpServletRequest req) {
-
+        log.error("Unhandled exception at {}: ", req.getRequestURI(), ex);
         ErrorResponse response = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
@@ -86,5 +85,39 @@ public class GlobalExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+    @ExceptionHandler(AIProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleAIProcessingException(
+            AIProcessingException ex,
+            HttpServletRequest req) {
+
+        log.error("AI processing failed at {}: ", req.getRequestURI(), ex);
+
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .error("AI Processing Error")
+                .message(ex.getMessage())
+                .path(req.getRequestURI())
+                .build();
+
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    @ExceptionHandler(AIProcessingTimeoutException.class)
+    public ResponseEntity<ErrorResponse> handleAITimeoutException(
+            AIProcessingTimeoutException ex,
+            HttpServletRequest req) {
+
+        log.error("AI processing timeout at {}: ", req.getRequestURI(), ex);
+
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.REQUEST_TIMEOUT.value())
+                .error("AI Timeout")
+                .message(ex.getMessage())
+                .path(req.getRequestURI())
+                .build();
+
+        return new ResponseEntity<>(response, HttpStatus.REQUEST_TIMEOUT);
     }
 }
