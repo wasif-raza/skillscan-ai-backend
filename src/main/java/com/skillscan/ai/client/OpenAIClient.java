@@ -21,7 +21,7 @@ public class OpenAIClient {
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(JsonParser.Feature.ALLOW_COMMENTS, true);
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     private static final String OLLAMA_URL = "http://localhost:11434/api/generate";
 
@@ -51,20 +51,19 @@ public class OpenAIClient {
 
         String responseText = response.getBody().get("response").toString();
 
-        //  Log raw AI response
-        log.info("Raw AI response: {}", responseText);
+        log.debug("Received AI response, length={} chars", responseText.length());
 
         try {
             String sanitized = sanitizeJson(responseText);
             String cleanJson = extractJson(sanitized);
 
-            log.info("Clean JSON: {}", cleanJson);
+            log.debug("Sanitized AI JSON, length={} chars", cleanJson.length());
 
             return parseSafe(cleanJson);
 
         } catch (Exception e) {
 
-            log.error("Parsing failed. Raw response={}", responseText, e);
+            log.error("Parsing failed for AI response, length={} chars", responseText.length(), e);
 
             //  fallback
             AIResponse fallback = new AIResponse();
@@ -87,8 +86,6 @@ public class OpenAIClient {
                 .replace("”", "\"")
                 .replace("’", "'");
 
-        // remove comments (// ...)
-        text = text.replaceAll("//.*", "");
 
         return text.trim();
     }

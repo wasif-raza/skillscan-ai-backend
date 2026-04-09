@@ -17,7 +17,7 @@ public class AIAnalysisController {
 
     private final AIAnalysisService aiAnalysisService;
 
-    @GetMapping("/resumes/{resumeId}/analysis")
+    @PostMapping("/resumes/{resumeId}/analysis")
     public ResponseEntity<AIResponse> analyze(@PathVariable UUID resumeId) {
 
         log.info("Analyzing resumeId={}", resumeId);

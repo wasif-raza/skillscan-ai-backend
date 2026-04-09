@@ -2,6 +2,8 @@ package com.skillscan.ai.services.impl;
 
 import com.skillscan.ai.client.OpenAIClient;
 import com.skillscan.ai.dto.response.AIResponse;
+import com.skillscan.ai.exception.AIProcessingException;
+import com.skillscan.ai.exception.AIProcessingTimeoutException;
 import com.skillscan.ai.exception.ResourceNotFoundException;
 import com.skillscan.ai.mapper.AIResponseMapper;
 import com.skillscan.ai.model.Resume;
@@ -14,8 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 @Slf4j
 @Service
@@ -26,6 +27,7 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
     private final ResumeAnalysisRepository resumeAnalysisRepository;
     private final OpenAIClient openAIClient;
     private final AIResponseMapper aiResponseMapper;
+    private final Executor aiAnalysisExecutor;
 
     private final ConcurrentHashMap<UUID, CompletableFuture<AIResponse>> inProgress = new ConcurrentHashMap<>();
 
@@ -46,14 +48,28 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
         CompletableFuture<AIResponse> future =
                 inProgress.computeIfAbsent(resumeId, id -> {
                     log.info("Starting AI processing for resumeId={}", id);
-                    return CompletableFuture.supplyAsync(() -> generateAndSave(id));
+                    return CompletableFuture.supplyAsync(() -> generateAndSave(id),aiAnalysisExecutor);
                 });
 
         try {
-            return future.get();
-        } catch (Exception e) {
-            log.error("AI processing failed for resumeId={}", resumeId, e);
-            throw new RuntimeException("AI processing failed", e);
+            return future.get(30, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                         throw new AIProcessingException("AI processing interrupted for resumeId=" + resumeId, e);
+                    } catch (ExecutionException e) {
+                        Throwable cause = e.getCause();
+                        log.error("AI processing failed for resumeId={}", resumeId, cause);
+                    throw new AIProcessingException(
+                         "AI processing failed for resumeId=" + resumeId,
+                       cause
+                    );
+        } catch (TimeoutException e) {
+            log.error("AI processing timed out for resumeId={}", resumeId);
+
+            throw new AIProcessingTimeoutException(
+                    "AI processing timed out after 30 seconds for resumeId=" + resumeId,
+                    e
+            );
         } finally {
             //  safe removal (prevents race condition)
             inProgress.computeIfPresent(resumeId, (k, v) -> v == future ? null : v);
@@ -87,12 +103,14 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
                 log.warn("Weak/invalid AI response for resumeId={}", resumeId);
             }
 
-            ResumeAnalysis entity =
-                    aiResponseMapper.mapToEntity(resumeId, aiResponse);
-
-            resumeAnalysisRepository.save(entity);
-
-            log.info("AI analysis saved for resumeId={}", resumeId);
+            if (isCacheable(aiResponse)) {
+                ResumeAnalysis entity =
+                        aiResponseMapper.mapToEntity(resumeId, aiResponse);
+                resumeAnalysisRepository.save(entity);
+                log.info("AI analysis saved for resumeId={}", resumeId);
+            } else {
+                log.warn("Skipping cache write for fallback AI response, resumeId={}", resumeId);
+            }
 
             return aiResponse;
 
@@ -105,6 +123,13 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
 
             return fallback;
         }
+    }
+
+    private boolean isCacheable(AIResponse response) {
+        return response != null
+                && response.getScore() > 0
+                && response.getSkills() != null && !response.getSkills().isEmpty()
+                && response.getKeywords() != null && !response.getKeywords().isEmpty();
     }
 
     private String buildPrompt(String resumeText) {
