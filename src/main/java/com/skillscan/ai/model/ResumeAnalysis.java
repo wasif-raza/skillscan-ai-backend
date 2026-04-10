@@ -3,6 +3,8 @@ package com.skillscan.ai.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -17,17 +19,20 @@ public class ResumeAnalysis {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true)
     private UUID resumeId;
 
-    private int score;
+    private double finalScore;
+    private double ruleScore;
+    private double llmScore;
 
-    @Column(columnDefinition = "TEXT")
-    private String skillsJson;
+    @ElementCollection
+    private List<String> suggestions;
 
-    @Column(columnDefinition = "TEXT")
-    private String keywordsJson;
+    private LocalDateTime createdAt;
 
-    @Column(columnDefinition = "TEXT")
-    private String suggestionsJson;
+    // 🔥 AUTO SET TIMESTAMP
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

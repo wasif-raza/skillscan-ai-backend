@@ -1,15 +1,35 @@
 package com.skillscan.ai.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
 import java.util.List;
-@JsonIgnoreProperties(ignoreUnknown = true)
+
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AIResponse {
-    private int score = 0;
-    private List<String> skills = new ArrayList<>() ;
-    private List<String> suggestions = new ArrayList<>();
-    private List<String> keywords = new ArrayList<>();
+
+    // 🔥 Final output
+    private double finalScore;
+
+    // 🔥 Internal scores
+    private double ruleScore;
+    private double llmScore;
+
+    // 🔥 Skills
+    private List<String> skills;
+
+    // 🔥 Matching (only for JD mode)
+    private List<String> matchedKeywords;
+    private List<String> missingKeywords;
+
+    // 🔥 Suggestions (mostly from LLM)
+    private List<String> suggestions;
+
+    // 🔥 NEW (IMPORTANT)
+    private boolean llmUsed;
 }
