@@ -154,7 +154,14 @@ public class OpenAIClient {
 
         if (node.isArray()) {
             List<String> list = new ArrayList<>();
-            node.forEach(n -> list.add(n.asText().toLowerCase().trim()));
+
+            node.forEach(n -> {
+                String value = n.asText().toLowerCase().trim();
+                if (!value.isEmpty()) {
+                    list.add(value);
+                }
+            });
+
             return list;
         }
 

@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -58,7 +60,7 @@ public class AnalysisOrchestratorServiceImpl implements AnalysisOrchestratorServ
                     .skills(ruleResult.getSkills())
                     .matchedKeywords(ruleResult.getMatchedKeywords())
                     .missingKeywords(ruleResult.getMissingKeywords())
-                    .suggestions(ruleResult.getSuggestions())
+                    .suggestions(Collections.emptyList())
                     .llmUsed(false)
                     .build();
         }

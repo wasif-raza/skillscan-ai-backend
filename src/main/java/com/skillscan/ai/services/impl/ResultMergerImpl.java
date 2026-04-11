@@ -13,6 +13,7 @@ public class ResultMergerImpl implements ResultMerger {
         double finalScore =
                 (rule.getRuleScore() * 0.7) +
                         (llm.getLlmScore() * 0.3);
+        boolean llmUsed = llm != null && llm.getLlmScore() > 0;
 
         return AIResponse.builder()
                 .finalScore(finalScore)

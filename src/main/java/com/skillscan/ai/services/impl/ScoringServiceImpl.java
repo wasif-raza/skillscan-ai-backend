@@ -15,22 +15,14 @@ public class ScoringServiceImpl implements ScoringService {
 
     private final SkillNormalizer normalizer;
 
-    //  Stopwords
+    // Stopwords
     private static final Set<String> STOPWORDS = Set.of(
             "the","a","an","and","or","to","of","in","on","with","for",
             "is","are","was","were","be","been","being","we","you",
             "they","he","she","it","as","at","by","from"
     );
 
-    //  Valid Skills (expand this as needed)
-    private static final Set<String> VALID_SKILLS = Set.of(
-            "java","spring","springboot","react","reactjs","nodejs",
-            "docker","kubernetes","postgresql","mysql","redis",
-            "aws","git","rest","api","microservices","hibernate","jpa",
-            "c","c++","c#","go","python","javascript"
-    );
-
-    //  Special short skills
+    // Special short skills
     private static final Set<String> SPECIAL_SKILLS = Set.of(
             "c","c++","c#","go","r"
     );
@@ -76,47 +68,51 @@ public class ScoringServiceImpl implements ScoringService {
                 .build();
     }
 
-    //  CLEAN SKILL EXTRACTION
+    // Clean skill extraction (NO hard filtering)
     private Set<String> extract(String text) {
-        if (text == null) return new HashSet<>();
+        if (text == null || text.isBlank()) return new HashSet<>();
 
         String lower = text.toLowerCase();
         Set<String> result = new HashSet<>();
 
-        //  Phrase detection
+        // Phrase detection
         if (lower.contains("spring boot")) result.add("springboot");
         if (lower.contains("react js") || lower.contains("react.js")) result.add("reactjs");
         if (lower.contains("node js") || lower.contains("node.js")) result.add("nodejs");
 
-        //  Special normalization
+        // Special normalization
         if (lower.contains("c++") || lower.contains("cpp") || lower.contains("c plus plus")) {
             result.add("c++");
         }
         if (lower.contains("c#")) result.add("c#");
         if (lower.contains("golang")) result.add("go");
 
-        //  Token extraction
+        // Token extraction
         Set<String> tokens = Arrays.stream(lower.split("[^a-zA-Z0-9+#.]+"))
                 .filter(s -> s.length() > 2 || SPECIAL_SKILLS.contains(s))
                 .filter(s -> !STOPWORDS.contains(s))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
 
-        //  Keep only valid skills
-        tokens.stream()
-                .filter(VALID_SKILLS::contains)
-                .forEach(result::add);
+        //  Keep all tokens (no whitelist filtering)
+        result.addAll(tokens);
 
         return result;
     }
 
+    // Normalize using LLM / custom normalizer
     private Set<String> normalize(Set<String> skills) {
+        if (skills == null || skills.isEmpty()) return new HashSet<>();
         return new HashSet<>(normalizer.normalize(new ArrayList<>(skills)));
     }
 
+    // Build suggestions (no restriction)
     private List<String> buildSuggestions(Set<String> missing) {
+        if (missing == null || missing.isEmpty()) return Collections.emptyList();
+
         return missing.stream()
-                .filter(VALID_SKILLS::contains)
-                .map(s -> "Add skill : " + s)
+                .map(s -> "Add skill: " + s)
                 .collect(Collectors.toList());
     }
 }
