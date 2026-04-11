@@ -1,28 +1,20 @@
 package com.skillscan.ai.controller;
 
+import com.skillscan.ai.dto.request.AnalysisRequestDTO;
 import com.skillscan.ai.dto.response.AIResponse;
-import com.skillscan.ai.services.AIAnalysisService;
+import com.skillscan.ai.services.AnalysisOrchestratorService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/analysis")
 @RequiredArgsConstructor
-@Slf4j
 public class AIAnalysisController {
 
-    private final AIAnalysisService aiAnalysisService;
+    private final AnalysisOrchestratorService orchestrator;
 
-    @PostMapping("/resumes/{resumeId}/analysis")
-    public ResponseEntity<AIResponse> analyze(@PathVariable UUID resumeId) {
-
-        log.info("Analyzing resumeId={}", resumeId);
-
-        AIResponse response = aiAnalysisService.analyze(resumeId);
-        return ResponseEntity.ok(response);
+    @PostMapping
+    public AIResponse analyze(@RequestBody AnalysisRequestDTO request) {
+        return orchestrator.analyze(request);
     }
 }

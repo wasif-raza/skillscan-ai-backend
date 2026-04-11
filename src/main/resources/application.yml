@@ -39,3 +39,8 @@ file:
 # Server config
 server:
   port: 8081
+
+
+#Ollama
+ollama:
+  model: llama3
