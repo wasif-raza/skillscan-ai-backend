@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skillscan.ai.dto.response.AIResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -17,124 +19,170 @@ import java.util.*;
 @Slf4j
 public class OpenAIClient {
 
-    //  Allow comments in JSON
+    private final RestTemplate restTemplate;
+
+    @Value("${ollama.model:llama3}")
+    private String model;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(JsonParser.Feature.ALLOW_COMMENTS, true);
-
-    private final RestTemplate restTemplate;
 
     private static final String OLLAMA_URL = "http://localhost:11434/api/generate";
 
     public AIResponse callAI(String prompt) {
 
-        Map<String, Object> request = new HashMap<>();
-        request.put("model", "llama3");
-        request.put("prompt", prompt);
-        request.put("stream", false);
-        request.put("options", Map.of("temperature", 0.1));
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            try {
+
+                HttpEntity<Map<String, Object>> entity = buildRequestEntity(prompt);
+
+                ResponseEntity<Map> response = restTemplate.exchange(
+                        OLLAMA_URL,
+                        HttpMethod.POST,
+                        entity,
+                        Map.class
+                );
+
+                String responseText = extractResponse(response);
+
+                log.debug("LLM preview={}",
+                        responseText.substring(0, Math.min(200, responseText.length())));
+
+                String cleanJson = extractJson(sanitizeJson(responseText));
+
+                return parseSafe(cleanJson);
+
+            } catch (ResourceAccessException e) {
+                log.warn("LLM timeout on attempt {}", attempt);
+                if (attempt == 2) break;
+                try{
+                    Thread.sleep(2000);
+                }catch (InterruptedException ie){
+                    Thread.currentThread().interrupt();
+                }
+            } catch (Exception e) {
+                log.error("LLM processing failed", e);
+                break;
+            }
+        }
+
+        return fallback("LLM unavailable");
+    }
+
+    //  Build request
+    private HttpEntity<Map<String, Object>> buildRequestEntity(String prompt) {
+
+        Map<String, Object> body = Map.of(
+                "model", model,
+                "prompt", prompt,
+                "stream", false,
+                "options", Map.of("temperature", 0.1)
+        );
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+        return new HttpEntity<>(body, headers);
+    }
 
-        ResponseEntity<Map> response = restTemplate.exchange(
-                OLLAMA_URL,
-                HttpMethod.POST,
-                entity,
-                Map.class
-        );
+    //  Extract response
+    private String extractResponse(ResponseEntity<Map> response) {
 
-        if (response.getBody() == null || response.getBody().get("response") == null) {
-            throw new RuntimeException("Invalid response from LLM");
+        if (response.getBody() == null) {
+            throw new IllegalStateException("Empty response from LLM");
         }
 
-        String responseText = response.getBody().get("response").toString();
+        Object res = response.getBody().get("response");
 
-        log.debug("Received AI response, length={} chars", responseText.length());
+        if (res == null) {
+            throw new IllegalStateException("Missing 'response' field");
+        }
+
+        return res.toString();
+    }
+
+    //  Clean text
+    private String sanitizeJson(String text) {
+        return text
+                .replaceAll("```json", "")
+                .replaceAll("```", "")
+                .replace("“", "\"")
+                .replace("”", "\"")
+                .replace("’", "'")
+                .trim();
+    }
+
+    //  Extract JSON safely
+    private String extractJson(String text) {
+        try {
+            JsonNode node = objectMapper.readTree(text);
+            return node.toString();
+        } catch (Exception e) {
+            int start = text.indexOf("{");
+            int end = text.lastIndexOf("}");
+            if (start == -1 || end == -1 || start > end) {
+                throw new IllegalStateException("No valid JSON found");
+            }
+            return text.substring(start, end + 1);
+        }
+    }
+
+    //  Parse response safely
+    private AIResponse parseSafe(String json) {
 
         try {
-            String sanitized = sanitizeJson(responseText);
-            String cleanJson = extractJson(sanitized);
+            JsonNode node = objectMapper.readTree(json);
 
-            log.debug("Sanitized AI JSON, length={} chars", cleanJson.length());
-
-            return parseSafe(cleanJson);
+            return AIResponse.builder()
+                    .llmScore(node.path("score").asDouble(0))
+                    .skills(parseList(node.get("skills")))
+                    .suggestions(parseList(node.get("suggestions")))
+                    .build();
 
         } catch (Exception e) {
-
-            log.error("Parsing failed for AI response, length={} chars", responseText.length(), e);
-
-            //  fallback
-            AIResponse fallback = new AIResponse();
-            fallback.setScore(0);
-            fallback.getSuggestions().add("Invalid AI response. Please try again.");
-
-            return fallback;
+            log.error("JSON parsing failed", e);
+            return fallback("Invalid AI response format");
         }
     }
 
-    //  Remove garbage around JSON
-    private String sanitizeJson(String text) {
-
-        // remove markdown blocks
-        text = text.replaceAll("```json", "")
-                .replaceAll("```", "");
-
-        // fix smart quotes
-        text = text.replace("“", "\"")
-                .replace("”", "\"")
-                .replace("’", "'");
-
-
-        return text.trim();
-    }
-
-    //  Extract only JSON part
-    private String extractJson(String text) {
-
-        int start = text.indexOf("{");
-        int end = text.lastIndexOf("}");
-
-        if (start == -1 || end == -1 || start > end) {
-            throw new RuntimeException("No valid JSON found in response");
-        }
-
-        return text.substring(start, end + 1);
-    }
-
-    //  Safe parsing
-    private AIResponse parseSafe(String json) throws Exception {
-
-        JsonNode node = objectMapper.readTree(json);
-
-        AIResponse res = new AIResponse();
-
-        res.setScore(node.path("score").asInt(0));
-        res.setSkills(parseList(node.get("skills")));
-        res.setKeywords(parseList(node.get("keywords")));
-        res.setSuggestions(parseList(node.get("suggestions")));
-
-        return res;
-    }
-
-    //  Handles both string and array
+    //  Robust list parsing
     private List<String> parseList(JsonNode node) {
 
         if (node == null || node.isNull()) {
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
 
         if (node.isArray()) {
-            return new ArrayList<>(objectMapper.convertValue(node, List.class));
+            List<String> list = new ArrayList<>();
+
+            node.forEach(n -> {
+                String value = n.asText().toLowerCase().trim();
+                if (!value.isEmpty()) {
+                    list.add(value);
+                }
+            });
+
+            return list;
         }
 
         if (node.isTextual()) {
             return Arrays.stream(node.asText().split(","))
+                    .map(String::toLowerCase)
                     .map(String::trim)
+                    .filter(s -> !s.isEmpty())
                     .toList();
         }
 
-        return new ArrayList<>();
+        return Collections.emptyList();
+    }
+
+    //  Fallback
+    private AIResponse fallback(String message) {
+
+        return AIResponse.builder()
+                .llmScore(0)
+                .skills(Collections.emptyList())
+                .suggestions(List.of(message))
+                .build();
     }
 }
