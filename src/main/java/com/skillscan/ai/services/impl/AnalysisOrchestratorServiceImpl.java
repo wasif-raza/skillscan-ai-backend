@@ -35,12 +35,12 @@ public class AnalysisOrchestratorServiceImpl implements AnalysisOrchestratorServ
 
         log.info("Analysis started | resumeId={} | JD Mode={}", request.getResumeId(), isJDMode);
 
-        // ✅ STEP 1: RULE SCORING (ALWAYS SAFE)
+        // RULE SCORING (ALWAYS SAFE)
         AIResponse ruleResult = isJDMode
                 ? scoringService.calculateWithJD(resumeText, jd)
                 : scoringService.calculateWithoutJD(resumeText);
 
-        // ✅ STEP 2: LLM (OPTIONAL)
+        //  LLM (OPTIONAL)
         AIResponse llmResult = null;
 
         try {
@@ -49,12 +49,21 @@ public class AnalysisOrchestratorServiceImpl implements AnalysisOrchestratorServ
             log.warn("LLM failed, fallback to rule-based only");
         }
 
-        // ✅ STEP 3: FALLBACK
+        //  FALLBACK
         if (llmResult == null || llmResult.getLlmScore() <= 0) {
-            return ruleResult;
+            return AIResponse.builder()
+                    .finalScore(ruleResult.getRuleScore())
+                    .ruleScore(ruleResult.getRuleScore())
+                    .llmScore(0)
+                    .skills(ruleResult.getSkills())
+                    .matchedKeywords(ruleResult.getMatchedKeywords())
+                    .missingKeywords(ruleResult.getMissingKeywords())
+                    .suggestions(ruleResult.getSuggestions())
+                    .llmUsed(false)
+                    .build();
         }
 
-        // ✅ STEP 4: MERGE
+        //  MERGE
         return merger.merge(ruleResult, llmResult);
     }
 }

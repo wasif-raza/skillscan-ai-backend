@@ -45,7 +45,6 @@ public class OpenAIClient {
 
                 String responseText = extractResponse(response);
 
-                log.debug("LLM response length={}", responseText.length());
                 log.debug("LLM preview={}",
                         responseText.substring(0, Math.min(200, responseText.length())));
 
@@ -55,6 +54,12 @@ public class OpenAIClient {
 
             } catch (ResourceAccessException e) {
                 log.warn("LLM timeout on attempt {}", attempt);
+                if (attempt == 2) break;
+                try{
+                    Thread.sleep(2000);
+                }catch (InterruptedException ie){
+                    Thread.currentThread().interrupt();
+                }
             } catch (Exception e) {
                 log.error("LLM processing failed", e);
                 break;
@@ -64,7 +69,7 @@ public class OpenAIClient {
         return fallback("LLM unavailable");
     }
 
-    // 🔥 Build request
+    //  Build request
     private HttpEntity<Map<String, Object>> buildRequestEntity(String prompt) {
 
         Map<String, Object> body = Map.of(
@@ -80,7 +85,7 @@ public class OpenAIClient {
         return new HttpEntity<>(body, headers);
     }
 
-    // 🔥 Extract response
+    //  Extract response
     private String extractResponse(ResponseEntity<Map> response) {
 
         if (response.getBody() == null) {
@@ -96,7 +101,7 @@ public class OpenAIClient {
         return res.toString();
     }
 
-    // 🔥 Clean text
+    //  Clean text
     private String sanitizeJson(String text) {
         return text
                 .replaceAll("```json", "")
@@ -107,7 +112,7 @@ public class OpenAIClient {
                 .trim();
     }
 
-    // 🔥 Extract JSON safely
+    //  Extract JSON safely
     private String extractJson(String text) {
         try {
             JsonNode node = objectMapper.readTree(text);
@@ -122,7 +127,7 @@ public class OpenAIClient {
         }
     }
 
-    // 🔥 Parse response safely
+    //  Parse response safely
     private AIResponse parseSafe(String json) {
 
         try {
@@ -140,7 +145,7 @@ public class OpenAIClient {
         }
     }
 
-    // 🔥 Robust list parsing
+    //  Robust list parsing
     private List<String> parseList(JsonNode node) {
 
         if (node == null || node.isNull()) {
@@ -164,11 +169,11 @@ public class OpenAIClient {
         return Collections.emptyList();
     }
 
-    // 🔥 Fallback
+    //  Fallback
     private AIResponse fallback(String message) {
 
         return AIResponse.builder()
-                .llmScore(-1) // indicates failure
+                .llmScore(0)
                 .skills(Collections.emptyList())
                 .suggestions(List.of(message))
                 .build();

@@ -1,0 +1,1 @@
+ALTER TABLE resume_analysis DROP COLUMN suggestions;

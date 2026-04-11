@@ -19,7 +19,7 @@ public class LLMOnlySkillNormalizer implements SkillNormalizer {
 
     private final LLMService llmService;
 
-    // ✅ cache
+    //  cache
     private final Map<String, List<String>> cache = new HashMap<>();
 
     @Override
@@ -31,7 +31,7 @@ public class LLMOnlySkillNormalizer implements SkillNormalizer {
 
         String key = skills.toString();
 
-        // ✅ 1. Cache check
+        // Cache check
         if (cache.containsKey(key)) {
             return cache.get(key);
         }
@@ -56,7 +56,7 @@ public class LLMOnlySkillNormalizer implements SkillNormalizer {
                         .distinct()
                         .toList();
 
-                cache.put(key, normalized); // ✅ store cache
+                cache.put(key, normalized); //  store cache
                 return normalized;
             }
 
@@ -64,7 +64,7 @@ public class LLMOnlySkillNormalizer implements SkillNormalizer {
             log.warn("LLM normalization failed, fallback used");
         }
 
-        // ✅ fallback clean
+        //  fallback clean
         return skills.stream()
                 .map(s -> s.toLowerCase().trim())
                 .distinct()
