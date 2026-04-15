@@ -25,14 +25,14 @@ public class LLMServiceImpl implements LLMService {
 
                     @Cacheable(
                             value = "llmCacheWithJD",
-                            key = "T(java.util.Objects).hash(#resumeText + '_' + #jd)",
+                            key = "T(com.skillscan.ai.util.CacheKeyUtil).hashKey(#resumeText, #jd)",
                             condition = "#jd != null && !#jd.isBlank()",
                             unless = "#result.llmScore == 0"
                     ),
 
                     @Cacheable(
                             value = "llmCacheWithoutJD",
-                            key = "T(java.util.Objects).hash(#resumeText)",
+                            key = "T(com.skillscan.ai.util.CacheKeyUtil).hashKey(#resumeText, #jd)",
                             condition = "#jd == null || #jd.isBlank()",
                             unless = "#result.llmScore == 0"
                     )
