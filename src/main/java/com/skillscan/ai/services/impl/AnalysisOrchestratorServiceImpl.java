@@ -2,6 +2,7 @@ package com.skillscan.ai.services.impl;
 
 import com.skillscan.ai.dto.request.AnalysisRequestDTO;
 import com.skillscan.ai.dto.response.AIResponse;
+import com.skillscan.ai.exception.ResumeNotFoundException;
 import com.skillscan.ai.model.Resume;
 import com.skillscan.ai.repository.ResumeRepository;
 import com.skillscan.ai.services.AnalysisOrchestratorService;
@@ -28,7 +29,7 @@ public class AnalysisOrchestratorServiceImpl implements AnalysisOrchestratorServ
     public AIResponse analyze(AnalysisRequestDTO request) {
 
         Resume resume = resumeRepository.findById(request.getResumeId())
-                .orElseThrow(() -> new RuntimeException("Resume not found"));
+                .orElseThrow(() -> new ResumeNotFoundException("Resume not found"));
 
         String resumeText = resume.getContent();
         String jd = request.getJobDescription();

@@ -5,6 +5,8 @@ import com.skillscan.ai.dto.response.AIResponse;
 import com.skillscan.ai.services.LLMService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +19,25 @@ public class LLMServiceImpl implements LLMService {
     private final OpenAIClient client;
 
     @Override
+
+    @Caching(
+            cacheable = {
+
+                    @Cacheable(
+                            value = "llmCacheWithJD",
+                            key = "T(java.util.Objects).hash(#resumeText + '_' + #jd)",
+                            condition = "#jd != null && !#jd.isBlank()",
+                            unless = "#result.llmScore == 0"
+                    ),
+
+                    @Cacheable(
+                            value = "llmCacheWithoutJD",
+                            key = "T(java.util.Objects).hash(#resumeText)",
+                            condition = "#jd == null || #jd.isBlank()",
+                            unless = "#result.llmScore == 0"
+                    )
+            }
+    )
     public AIResponse analyze(String resumeText, String jd) {
 
         log.info("Calling LLM | resumeLength={} | jdPresent={}",
