@@ -5,21 +5,37 @@ services:
     container_name: skillscan_postgres
 
     environment:
-      POSTGRES_DB: skillscan_db          # Same as application.yml
-      POSTGRES_USER: skillscan_user      # Same as application.yml
-      POSTGRES_PASSWORD: skillscan_password  # Same as application.yml
+      POSTGRES_DB: skillscan_db
+      POSTGRES_USER: skillscan_user
+      POSTGRES_PASSWORD: skillscan_password
 
     ports:
-      - "5433:5432"  # Expose DB port
+      - "5433:5432"
 
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Persist data
+      - postgres_data:/var/lib/postgresql/data
+
+    networks:
+      - skillscan_network
+
+  redis:
+    image: redis:7
+    container_name: skillscan_redis
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis_data:/data
+
+    command: ["redis-server", "--appendonly", "yes"]
 
     networks:
       - skillscan_network
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   skillscan_network:

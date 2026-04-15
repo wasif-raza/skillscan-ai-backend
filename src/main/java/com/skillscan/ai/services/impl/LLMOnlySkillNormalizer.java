@@ -6,11 +6,9 @@ import com.skillscan.ai.services.SkillNormalizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
 
 @Service
 @RequiredArgsConstructor
@@ -19,9 +17,6 @@ public class LLMOnlySkillNormalizer implements SkillNormalizer {
 
     private final LLMService llmService;
 
-    //  cache
-    private final Map<String, List<String>> cache = new HashMap<>();
-
     @Override
     public List<String> normalize(List<String> skills) {
 
@@ -29,45 +24,38 @@ public class LLMOnlySkillNormalizer implements SkillNormalizer {
             return Collections.emptyList();
         }
 
-        String key = skills.toString();
-
-        // Cache check
-        if (cache.containsKey(key)) {
-            return cache.get(key);
-        }
+        List<String> cleanedSkills = skills.stream()
+                .map(s -> s.toLowerCase().trim())
+                .filter(s -> !s.isEmpty())
+                .sorted()
+                .toList();
 
         try {
             String prompt = """
-                Convert the following skills into standard professional keywords.
-                - Merge similar terms
-                - Use industry-standard naming
-                - Keep it concise list
-
-                Skills: %s
-                """.formatted(skills);
+                    Convert the following skills into standard professional keywords.
+                    - Merge similar terms
+                    - Use industry-standard naming
+                    - Keep it concise list
+                    
+                    Skills: %s
+                    """.formatted(cleanedSkills);
 
             AIResponse response = llmService.analyze(prompt, "");
 
             if (response.getSkills() != null && !response.getSkills().isEmpty()) {
 
-                List<String> normalized = response.getSkills().stream()
+                return response.getSkills().stream()
                         .map(s -> s.toLowerCase().trim())
                         .filter(s -> !s.isEmpty())
                         .distinct()
                         .toList();
 
-                cache.put(key, normalized); //  store cache
-                return normalized;
             }
-
         } catch (Exception e) {
-            log.warn("LLM normalization failed, fallback used");
+            log.error("LLM normalization failed", e);
         }
 
         //  fallback clean
-        return skills.stream()
-                .map(s -> s.toLowerCase().trim())
-                .distinct()
-                .toList();
+        return cleanedSkills;
     }
 }

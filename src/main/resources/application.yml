@@ -27,7 +27,7 @@ spring:
   # redis
   data:
     redis:
-      host: localhost
+      host: skillscan_redis
       port: 6379
       timeout: 6000
   #  Multipart config
