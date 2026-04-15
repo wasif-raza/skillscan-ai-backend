@@ -26,5 +26,4 @@ public class AIResponse {
 
     private List<String> suggestions;
 
-    private boolean llmUsed;
 }
