@@ -1,35 +1,50 @@
-
 services:
   postgres:
     image: postgres:16
     container_name: skillscan_postgres
-
     environment:
       POSTGRES_DB: skillscan_db
       POSTGRES_USER: skillscan_user
       POSTGRES_PASSWORD: skillscan_password
-
     ports:
       - "5433:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
     networks:
       - skillscan_network
 
   redis:
     image: redis:7
     container_name: skillscan_redis
-
     ports:
       - "6379:6379"
-
     volumes:
       - redis_data:/data
-
     command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - skillscan_network
 
+  #  Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: skillscan_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./Monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    networks:
+      - skillscan_network
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: skillscan_grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
     networks:
       - skillscan_network
 

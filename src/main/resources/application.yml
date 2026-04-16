@@ -49,3 +49,17 @@ server:
 #Ollama
 ollama:
   model: llama3
+
+#Prometheus
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true

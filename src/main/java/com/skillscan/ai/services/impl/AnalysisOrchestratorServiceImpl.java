@@ -62,7 +62,6 @@ public class AnalysisOrchestratorServiceImpl implements AnalysisOrchestratorServ
                     .matchedKeywords(ruleResult.getMatchedKeywords())
                     .missingKeywords(ruleResult.getMissingKeywords())
                     .suggestions(Collections.emptyList())
-                    .llmUsed(false)
                     .build();
         }
 
