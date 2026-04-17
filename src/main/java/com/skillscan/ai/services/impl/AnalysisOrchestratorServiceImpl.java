@@ -37,7 +37,7 @@ public class AnalysisOrchestratorServiceImpl implements AnalysisOrchestratorServ
 
             Resume resume = resumeRepository.findById(request.getResumeId())
                     .orElseThrow(() -> {
-                        metrics.recordError("resume_not_found"); // 🔥 metric
+                        metrics.recordError("resume_not_found");
                         return new ResumeNotFoundException("Resume not found");
                     });
 
@@ -90,9 +90,12 @@ public class AnalysisOrchestratorServiceImpl implements AnalysisOrchestratorServ
             } catch (Exception e) {
 
                 //  Track unexpected failures
-                metrics.recordError("analysis_failure");
+                if(!( e instanceof  ResumeNotFoundException)) {
+                    metrics.recordError("analysis_failure");
 
-                log.error("Analysis failed", e);
+                    log.error("Analysis failed", e);
+
+                }
                 throw e;
             }
         });

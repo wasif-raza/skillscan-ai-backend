@@ -30,7 +30,15 @@ public class LLMServiceImpl implements LLMService {
         String key = CacheKeyUtil.hashKey(resumeText, jd);
 
         //  Check Cache
-        AIResponse cached = (AIResponse) redisTemplate.opsForValue().get(key);
+        AIResponse cached =null;
+        try{
+
+            cached = (AIResponse) redisTemplate.opsForValue().get(key);
+
+        }catch (Exception e){
+            log.warn("Redis GET failed, proceeding without cache | key={}", key, e);
+            metrics.recordError("cache_error");
+        }
 
         if (cached != null) {
             log.info("Cache HIT | key={}", key);
@@ -56,7 +64,13 @@ public class LLMServiceImpl implements LLMService {
 
             // Store in Redis (only valid response)
             if (response.getLlmScore() > 0) {
-                redisTemplate.opsForValue().set(key, response, CACHE_TTL);
+                try{
+                    redisTemplate.opsForValue().set(key, response, CACHE_TTL);
+                } catch (Exception e) {
+                    log.warn("Redis SET failed, returning response without caching | key={}", key, e);
+                    metrics.recordError("cache_error");
+                }
+
             }
 
             return response;
