@@ -2,13 +2,15 @@ package com.skillscan.ai.services.impl;
 
 import com.skillscan.ai.client.OpenAIClient;
 import com.skillscan.ai.dto.response.AIResponse;
+import com.skillscan.ai.metrics.SkillScanAIMetrics;
 import com.skillscan.ai.services.LLMService;
+import com.skillscan.ai.util.CacheKeyUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.List;
 
 @Service
@@ -17,53 +19,84 @@ import java.util.List;
 public class LLMServiceImpl implements LLMService {
 
     private final OpenAIClient client;
+    private final SkillScanAIMetrics metrics;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    private static final Duration CACHE_TTL = Duration.ofMinutes(10);
 
     @Override
-
-    @Caching(
-            cacheable = {
-
-                    @Cacheable(
-                            value = "llmCacheWithJD",
-                            key = "T(com.skillscan.ai.util.CacheKeyUtil).hashKey(#resumeText, #jd)",
-                            condition = "#jd != null && !#jd.isBlank()",
-                            unless = "#result.llmScore == 0"
-                    ),
-
-                    @Cacheable(
-                            value = "llmCacheWithoutJD",
-                            key = "T(com.skillscan.ai.util.CacheKeyUtil).hashKey(#resumeText, #jd)",
-                            condition = "#jd == null || #jd.isBlank()",
-                            unless = "#result.llmScore == 0"
-                    )
-            }
-    )
     public AIResponse analyze(String resumeText, String jd) {
 
-        log.info("Calling LLM | resumeLength={} | jdPresent={}",
-                resumeText != null ? resumeText.length() : 0,
-                jd != null && !jd.isBlank());
+        String key = CacheKeyUtil.hashKey(resumeText, jd);
 
-        String prompt = """
+        //  Check Cache
+        AIResponse cached =null;
+        try{
+
+            cached = (AIResponse) redisTemplate.opsForValue().get(key);
+
+        }catch (Exception e){
+            log.warn("Redis GET failed, proceeding without cache | key={}", key, e);
+            metrics.recordError("cache_error");
+        }
+
+        if (cached != null) {
+            log.info("Cache HIT | key={}", key);
+            metrics.recordCacheHit();
+            return cached;
+        }
+
+        log.info("Cache MISS | key={}", key);
+        metrics.recordCacheMiss();
+
+        try {
+            //  Call LLM with timing
+            AIResponse response = metrics.timeLlm(() -> {
+                metrics.recordLlmCall();
+                return client.callAI(buildPrompt(resumeText, jd));
+            });
+
+            //  Validate response
+            if (response == null) {
+                metrics.recordError("llm_null_response");
+                return fallback();
+            }
+
+            // Store in Redis (only valid response)
+            if (response.getLlmScore() > 0) {
+                try{
+                    redisTemplate.opsForValue().set(key, response, CACHE_TTL);
+                } catch (Exception e) {
+                    log.warn("Redis SET failed, returning response without caching | key={}", key, e);
+                    metrics.recordError("cache_error");
+                }
+
+            }
+
+            return response;
+
+        } catch (Exception e) {
+            log.error("LLMService failed", e);
+            metrics.recordError("llm_exception");
+            return fallback();
+        }
+    }
+
+    //  Prompt Builder
+    private String buildPrompt(String resumeText, String jd) {
+        return """
         You are an AI resume analyzer.
 
         TASK:
         Analyze the resume and (if provided) job description.
 
-        Return ONLY valid JSON (no extra text) in this format:
+        Return ONLY valid JSON (no extra text):
 
         {
           "score": number (0-100),
-          "skills": [list of standardized skills],
-          "suggestions": [list of improvements]
+          "skills": [],
+          "suggestions": []
         }
-
-        RULES:
-        - Normalize all skills to industry-standard keywords
-        - Merge duplicates (ReactJS → React, Spring Boot → Spring)
-        - Support ALL domains (software, mechanical, electrical, etc.)
-        - Keep output concise
-        - Do NOT include explanation outside JSON
 
         RESUME:
         %s
@@ -74,22 +107,9 @@ public class LLMServiceImpl implements LLMService {
                 resumeText == null ? "" : resumeText,
                 jd == null ? "" : jd
         );
-
-        try {
-            AIResponse response = client.callAI(prompt);
-
-            if (response == null) {
-                return fallback();
-            }
-
-            return response;
-
-        } catch (Exception e) {
-            log.error("LLMService failed", e);
-            return fallback();
-        }
     }
 
+    //  Fallback
     private AIResponse fallback() {
         return AIResponse.builder()
                 .llmScore(0)
