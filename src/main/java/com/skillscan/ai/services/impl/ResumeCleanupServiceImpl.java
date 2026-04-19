@@ -60,7 +60,7 @@ public class ResumeCleanupServiceImpl implements ResumeCleanupService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    private void handleDeletion(Resume resume) {
+    public void handleDeletion(Resume resume) {
         try {
             deleteFile(resume.getFilePath());
 
