@@ -1,0 +1,1 @@
+CREATE DATABASE skillscan_ai_test;
