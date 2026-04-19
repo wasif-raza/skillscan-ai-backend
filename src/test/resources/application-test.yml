@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/skillscan_db_test
+    url: jdbc:postgresql://localhost:5433/skillscan_ai_test
     username: skillscan_user
     password: skillscan_password
     driver-class-name: org.postgresql.Driver
