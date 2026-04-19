@@ -34,4 +34,11 @@ public class Resume {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    private LocalDateTime expiryTime;
+
+    @Enumerated(EnumType.STRING)
+    private ResumeStatus status;
+
+    private int retryCount = 0;
+
 }

@@ -6,6 +6,7 @@ import com.skillscan.ai.exception.BaseException;
 import com.skillscan.ai.exception.UserNotFoundException;
 import com.skillscan.ai.mapper.ResumeMapper;
 import com.skillscan.ai.model.Resume;
+import com.skillscan.ai.model.ResumeStatus;
 import com.skillscan.ai.model.User;
 import com.skillscan.ai.repository.ResumeRepository;
 import com.skillscan.ai.repository.UserRepository;
@@ -121,6 +122,8 @@ public class ResumeServiceImpl implements ResumeService {
                     .fileType(PDF_CONTENT_TYPE)
                     .filePath(targetLocation.toString())
                     .uploadedAt(LocalDateTime.now())
+                    .expiryTime(LocalDateTime.now().plusHours(24))
+                    .status(ResumeStatus.ACTIVE)
                     .content(extractedText)
                     .build();
 
