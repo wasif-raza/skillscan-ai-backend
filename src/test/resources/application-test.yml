@@ -1,0 +1,47 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/skillscan_db_test
+    username: skillscan_user
+    password: skillscan_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop   # important for testing
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Kolkata
+
+  flyway:
+    enabled: false   #  disable for tests (important)
+
+  data:
+    redis:
+      host: localhost   #  don't use docker hostname here
+      port: 6379
+      timeout: 6000
+
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 1MB
+
+# file config (can be temporary for tests)
+file:
+  upload-dir: ${UPLOAD_DIR:/tmp/test-resumes}
+  max-size: 1MB
+
+server:
+  port: 0   # random port for tests
+
+ollama:
+  model: llama3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
