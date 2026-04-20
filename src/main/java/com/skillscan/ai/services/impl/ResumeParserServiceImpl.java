@@ -31,7 +31,11 @@ public class ResumeParserServiceImpl implements ResumeParserService {
             if (!Files.exists(filePath)) {
                 throw new ResumeNotFoundException("File not found: " + filePath);
             }
-
+            long fileSize = Files.size(filePath);
+            if (fileSize == 0) {
+                log.warn("Empty file: {}", filePath);
+                return "";
+            }
             if (Files.size(filePath) > MAX_PARSE_SIZE_BYTES) {
                 throw new ResumeTooLargeException("Resume file too large to parse");
             }

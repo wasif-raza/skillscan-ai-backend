@@ -86,7 +86,7 @@ public class ResumeCleanupServiceImpl implements ResumeCleanupService {
 
     }
 
-    private void deleteFile(String filePath) throws IOException {
+    public void deleteFile(String filePath) throws IOException {
         if (filePath == null || filePath.isBlank()){
             throw new IllegalArgumentException("File path is null or empty");
         }
