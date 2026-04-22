@@ -9,6 +9,6 @@ import java.util.UUID;
 public class AnalysisRequestDTO {
 
     @NotNull
-    private UUID resumeId;        // optional (DB source)
+    private UUID resumeId;
     private String jobDescription; // optional
 }

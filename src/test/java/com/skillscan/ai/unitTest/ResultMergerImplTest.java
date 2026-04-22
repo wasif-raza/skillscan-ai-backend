@@ -1,4 +1,4 @@
-package com.skillscan.ai.service;
+package com.skillscan.ai.unitTest;
 
 import com.skillscan.ai.dto.response.AIResponse;
 import com.skillscan.ai.services.impl.ResultMergerImpl;
