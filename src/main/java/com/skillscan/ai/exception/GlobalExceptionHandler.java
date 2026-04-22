@@ -14,6 +14,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
 @Slf4j
 @RestControllerAdvice
 @RequiredArgsConstructor
@@ -138,5 +141,15 @@ public class GlobalExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(response, HttpStatus.REQUEST_TIMEOUT);
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+    public ResponseEntity<Map<String, String>> handleMissingFileException(
+            org.springframework.web.multipart.support.MissingServletRequestPartException ex
+    ) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", "File is required");
+
+        return ResponseEntity.badRequest().body(error);
     }
 }
