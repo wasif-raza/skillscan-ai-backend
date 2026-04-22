@@ -12,10 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+
 
 @Slf4j
 @RestControllerAdvice
@@ -142,14 +141,22 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(response, HttpStatus.REQUEST_TIMEOUT);
     }
-
-    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
-    public ResponseEntity<Map<String, String>> handleMissingFileException(
-            org.springframework.web.multipart.support.MissingServletRequestPartException ex
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ErrorResponse> handleMissingFileException(
+            MissingServletRequestPartException ex,
+            HttpServletRequest req
     ) {
-        Map<String, String> error = new HashMap<>();
-        error.put("message", "File is required");
+        metrics.recordError("missing_file");
 
-        return ResponseEntity.badRequest().body(error);
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Bad Request")
+                .message("File is required")
+                .path(req.getRequestURI())
+                .build();
+
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
+
 }

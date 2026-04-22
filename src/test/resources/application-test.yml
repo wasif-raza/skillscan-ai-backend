@@ -7,7 +7,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop   # important for testing
+      ddl-auto: validate
 
     properties:
       hibernate:
@@ -19,7 +19,7 @@ spring:
 
   flyway:
     enabled: true
-    baseline-on-migration: true
+    baseline-on-migrate: true
 
   data:
     redis:

@@ -23,28 +23,30 @@ class ResumeRepositoryTest extends BaseRepositoryTest {
     @Autowired
     private UserRepository userRepository;
 
-    //  Test findByUserId
+    // Test findByUserId
     @Test
     void shouldReturnResumes_whenUserIdExists() {
+
+        LocalDateTime now = LocalDateTime.now();
 
         User user = User.builder()
                 .name("Wasif")
                 .email("wasif@test.com")
                 .build();
 
-        user = userRepository.save(user); // important
+        user = userRepository.save(user);
 
         Resume resume = Resume.builder()
-                .user(user) //  correct mapping
+                .user(user)
                 .fileName("resume.pdf")
                 .fileType("pdf")
                 .filePath("/files/resume.pdf")
-                .uploadedAt(LocalDateTime.now())
+                .uploadedAt(now)
                 .status(ResumeStatus.ACTIVE)
-                .expiryTime(LocalDateTime.now().plusHours(1))
+                .expiryTime(now.plusHours(1))
                 .build();
 
-        resumeRepository.save(resume);
+        resumeRepository.saveAndFlush(resume);
 
         List<Resume> result = resumeRepository.findByUserId(user.getId());
 
@@ -55,6 +57,8 @@ class ResumeRepositoryTest extends BaseRepositoryTest {
     // Test findExpiredResumes
     @Test
     void shouldReturnExpiredResumes_whenConditionMatches() {
+
+        LocalDateTime now = LocalDateTime.now();
 
         User user = userRepository.save(
                 User.builder()
@@ -68,9 +72,9 @@ class ResumeRepositoryTest extends BaseRepositoryTest {
                 .fileName("old.pdf")
                 .fileType("pdf")
                 .filePath("/files/old.pdf")
-                .uploadedAt(LocalDateTime.now().minusDays(1))
+                .uploadedAt(now.minusDays(1))
                 .status(ResumeStatus.ACTIVE)
-                .expiryTime(LocalDateTime.now().minusHours(2)) // expired
+                .expiryTime(now.minusHours(2)) // expired
                 .build();
 
         Resume activeResume = Resume.builder()
@@ -78,21 +82,21 @@ class ResumeRepositoryTest extends BaseRepositoryTest {
                 .fileName("new.pdf")
                 .fileType("pdf")
                 .filePath("/files/new.pdf")
-                .uploadedAt(LocalDateTime.now())
+                .uploadedAt(now)
                 .status(ResumeStatus.ACTIVE)
-                .expiryTime(LocalDateTime.now().plusHours(2)) // not expired
+                .expiryTime(now.plusHours(2)) // not expired
                 .build();
 
-        resumeRepository.saveAll(List.of(expiredResume, activeResume));
+        resumeRepository.saveAllAndFlush(List.of(expiredResume, activeResume));
 
         Page<Resume> result = resumeRepository.findExpiredResumes(
-                LocalDateTime.now(),
+                now,
                 List.of(ResumeStatus.ACTIVE),
                 PageRequest.of(0, 10)
         );
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getExpiryTime())
-                .isBefore(LocalDateTime.now());
+                .isBefore(now);
     }
 }

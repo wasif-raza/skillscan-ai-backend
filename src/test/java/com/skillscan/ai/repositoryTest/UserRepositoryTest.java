@@ -14,15 +14,16 @@ class UserRepositoryTest extends BaseRepositoryTest {
     @Test
     void shouldReturnTrue_whenEmailExists() {
 
+        String email = "wasif@test.com";
+
         User user = User.builder()
                 .name("Wasif")
-                .email("wasif@test.com")
-
+                .email(email)
                 .build();
 
-        userRepository.save(user);
+        userRepository.saveAndFlush(user);
 
-        boolean exists = userRepository.existsByEmail("wasif@test.com");
+        boolean exists = userRepository.existsByEmail(email);
 
         assertThat(exists).isTrue();
     }
@@ -30,7 +31,9 @@ class UserRepositoryTest extends BaseRepositoryTest {
     @Test
     void shouldReturnFalse_whenEmailNotExists() {
 
-        boolean exists = userRepository.existsByEmail("unknown@test.com");
+        String email = "unknown@test.com";
+
+        boolean exists = userRepository.existsByEmail(email);
 
         assertThat(exists).isFalse();
     }
