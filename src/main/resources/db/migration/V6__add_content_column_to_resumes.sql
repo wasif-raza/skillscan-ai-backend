@@ -1,1 +1,0 @@
-ALTER TABLE resumes ADD COLUMN content TEXT;

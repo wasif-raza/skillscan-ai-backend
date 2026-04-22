@@ -1,6 +1,5 @@
 package com.skillscan.ai.services.impl;
 
-import com.skillscan.ai.exception.FileDeletionException;
 import com.skillscan.ai.model.Resume;
 import com.skillscan.ai.model.ResumeStatus;
 import com.skillscan.ai.repository.ResumeRepository;
