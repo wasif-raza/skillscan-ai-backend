@@ -22,23 +22,30 @@ public class Resume {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "file_name")
     private String fileName;
-    private String fileType;
-    private  String filePath;
 
+    @Column(name = "file_type")
+    private String fileType;
+
+    @Column(name = "file_path")
+    private String filePath;
+
+    @Column(name = "uploaded_at")
     private LocalDateTime uploadedAt;
 
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "expiry_time")
     private LocalDateTime expiryTime;
 
     @Enumerated(EnumType.STRING)
     private ResumeStatus status;
 
+    @Column(name = "retry_count")
     private int retryCount = 0;
-
 }
