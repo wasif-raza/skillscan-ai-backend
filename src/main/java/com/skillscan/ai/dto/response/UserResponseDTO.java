@@ -14,7 +14,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class UserResponseDTO {
     private UUID id;
-    private String name;
+    private String firstName;
+    private String lastName;
     private String email;
     private LocalDateTime createdAt;
 }
