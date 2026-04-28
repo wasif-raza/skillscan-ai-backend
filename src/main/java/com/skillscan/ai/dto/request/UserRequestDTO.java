@@ -10,7 +10,7 @@ public class UserRequestDTO {
     @NotBlank(message = "First Name is required")
     private String firstName;
 
-    private String lastNAme;
+    private String lastName;
 
     @Email(message = "Invalid email format")
     @NotBlank(message = "Email is required")
