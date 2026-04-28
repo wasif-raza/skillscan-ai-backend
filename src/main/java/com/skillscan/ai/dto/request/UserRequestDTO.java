@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 public class UserRequestDTO {
 
-    @NotBlank(message = "name is required")
+    @NotBlank(message = "First Name is required")
     private String firstName;
 
     private String lastNAme;
