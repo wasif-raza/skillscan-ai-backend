@@ -1,5 +1,6 @@
 package com.skillscan.ai.model;
 
+import com.skillscan.ai.model.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,6 +25,14 @@ public class User {
 
     @Column(nullable = false, unique = true)
     private String email;
+
+
+    @Column(nullable = false)
+    private String password;
+
+
+    @Enumerated(EnumType.STRING)
+    private UserRole role;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
