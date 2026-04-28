@@ -8,7 +8,9 @@ import lombok.Data;
 public class UserRequestDTO {
 
     @NotBlank(message = "name is required")
-    private String name;
+    private String firstName;
+
+    private String lastNAme;
 
     @Email(message = "Invalid email format")
     @NotBlank(message = "Email is required")
