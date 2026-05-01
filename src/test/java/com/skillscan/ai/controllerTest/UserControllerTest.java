@@ -57,14 +57,16 @@ class UserControllerTest {
     void shouldReturnAllUsers() throws Exception {
         UserResponseDTO user1 = UserResponseDTO.builder()
                 .id(UUID.randomUUID())
-                .name("Alice")
+                .firstName("Alice")
+                .lastName("Smith")
                 .email("alice@mail.com")
                 .createdAt(LocalDateTime.now())
                 .build();
 
         UserResponseDTO user2 = UserResponseDTO.builder()
                 .id(UUID.randomUUID())
-                .name("Bob")
+                .firstName("Bob")
+                .lastName("Jones")
                 .email("bob@mail.com")
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -96,7 +98,8 @@ class UserControllerTest {
 
         UserResponseDTO response = UserResponseDTO.builder()
                 .id(id)
-                .name("Alice")
+                .firstName("Alice")
+                .lastName("Smith")
                 .email("alice@mail.com")
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -107,19 +110,19 @@ class UserControllerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("alice@mail.com"))
-                .andExpect(jsonPath("$.name").value("Alice"));
+                .andExpect(jsonPath("$.firstName").value("Alice"));
     }
 
     //  CREATE USER
     @Test
     void shouldCreateUser() throws Exception {
         UserRequestDTO request = new UserRequestDTO();
-        request.setName("Alice");
+        request.setFirstName("Alice");
         request.setEmail("alice@mail.com");
 
         UserResponseDTO response = UserResponseDTO.builder()
                 .id(UUID.randomUUID())
-                .name("Alice")
+                .firstName("Alice")
                 .email("alice@mail.com")
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -131,13 +134,13 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("alice@mail.com"))
-                .andExpect(jsonPath("$.name").value("Alice"));
+                .andExpect(jsonPath("$.firstName").value("Alice"));
     }
 
     @Test
-    void shouldReturn400_whenNameIsBlank() throws Exception {
+    void shouldReturn400_whenFirstNameIsBlank() throws Exception {
         UserRequestDTO request = new UserRequestDTO();
-        request.setName("");                    // violates @NotBlank
+        request.setFirstName("");               // violates @NotBlank
         request.setEmail("alice@mail.com");
 
         mockMvc.perform(post("/api/users")
@@ -149,7 +152,7 @@ class UserControllerTest {
     @Test
     void shouldReturn400_whenEmailIsInvalid() throws Exception {
         UserRequestDTO request = new UserRequestDTO();
-        request.setName("Alice");
+        request.setFirstName("Alice");
         request.setEmail("not-a-valid-email");  // violates @Email
 
         mockMvc.perform(post("/api/users")
@@ -157,7 +160,6 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
-
 
     //  DELETE USER
     @Test

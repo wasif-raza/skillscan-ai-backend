@@ -1,6 +1,5 @@
 package com.skillscan.ai.security;
 
-import com.skillscan.ai.repository.UserRepository;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +15,7 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwt;
-    private final UserRepository repo;
+    private final CustomUserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
@@ -34,10 +33,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             jwt.validate(token, "access");
 
-            var user = repo.findById(jwt.getUserId(token))
-                    .orElseThrow();
+            if (SecurityContextHolder.getContext().getAuthentication() == null){
 
-            var userDetails = new CustomUserDetails(user);
+                String email = jwt.getEmail(token);
+
+              var userDetails  =userDetailsService.loadUserByUsername(email);
 
             var auth = new UsernamePasswordAuthenticationToken(
                     userDetails,
@@ -46,7 +46,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             );
 
             SecurityContextHolder.getContext().setAuthentication(auth);
-
+        }
         } catch (Exception e) {
             SecurityContextHolder.clearContext();
         }
