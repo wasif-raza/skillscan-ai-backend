@@ -1,9 +1,9 @@
 package com.skillscan.ai.controller;
 
-import com.skillscan.ai.dto.request.UserRequestDTO;
+
 import com.skillscan.ai.dto.response.UserResponseDTO;
 import com.skillscan.ai.services.UserService;
-import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,12 +17,6 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
-
-    //  Create user
-    @PostMapping
-    public ResponseEntity<UserResponseDTO> createUser(@Valid @RequestBody UserRequestDTO dto) {
-        return ResponseEntity.ok(userService.createUser(dto));
-    }
 
     //  Get user by ID
     @GetMapping("/{id}")
