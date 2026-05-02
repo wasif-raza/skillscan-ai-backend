@@ -14,6 +14,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -27,13 +29,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void register(RegisterRequest request) {
 
-        if (repo.existsByEmail(request.getEmail().toLowerCase())) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (repo.existsByEmail(normalizedEmail)) {
             throw new EmailAlreadyExistsException("Email already exists");
         }
         User user = User.builder()
                 .firstName(request.getFirstName().trim())
                 .lastName(request.getLastName())
-                .email(request.getEmail().toLowerCase().trim())
+                .email(normalizedEmail)
                 .password(encoder.encode(request.getPassword()))
                 .role(UserRole.USER)
                 .build();

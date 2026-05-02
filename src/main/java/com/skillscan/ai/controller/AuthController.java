@@ -8,6 +8,7 @@ import com.skillscan.ai.model.enums.UserRole;
 import com.skillscan.ai.repository.UserRepository;
 import com.skillscan.ai.security.JwtTokenProvider;
 import com.skillscan.ai.services.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,7 +28,7 @@ public class AuthController {
 
     //  REGISTER
     @PostMapping("/register")
-    public Map<String, String> register(@RequestBody RegisterRequest req) {
+    public Map<String, String> register(@Valid @RequestBody RegisterRequest req) {
         authService.register(req);
         return Map.of("message", "User registered successfully");
     }
