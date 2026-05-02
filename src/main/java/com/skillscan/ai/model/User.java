@@ -3,6 +3,7 @@ package com.skillscan.ai.model;
 import com.skillscan.ai.model.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

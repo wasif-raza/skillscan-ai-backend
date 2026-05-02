@@ -1,5 +1,6 @@
 package com.skillscan.ai.security;
 
+import com.skillscan.ai.exception.JwtValidationException;
 import com.skillscan.ai.model.enums.UserRole;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
@@ -35,15 +36,15 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
-    public String generateAccessToken(UUID userId, UserRole role) {
-        return buildToken(userId, role, accessExp, "access");
+    public String generateAccessToken(UUID userId,String email, UserRole role) {
+        return buildToken(userId,email, role, accessExp, "access");
     }
 
-    public String generateRefreshToken(UUID userId, UserRole role) {
-        return buildToken(userId, role, refreshExp, "refresh");
+    public String generateRefreshToken(UUID userId,String email, UserRole role) {
+        return buildToken(userId,email, role, refreshExp, "refresh");
     }
 
-    private String buildToken(UUID userId, UserRole role, long exp, String type) {
+    private String buildToken(UUID userId,String email, UserRole role, long exp, String type) {
         Date now = new Date();
 
         return Jwts.builder()
@@ -54,6 +55,7 @@ public class JwtTokenProvider {
                 .expiration(new Date(now.getTime() + exp))
                 .claim("type", type)
                 .claim("role", role.name())
+                .claim("email",email)
                 .signWith(key(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -74,19 +76,21 @@ public class JwtTokenProvider {
         return UserRole.valueOf(parse(token).get("role", String.class));
     }
 
+    public String getEmail(String token) {return parse(token).get("email", String.class);}
+
     public void validate(String token, String expectedType) {
         Claims c = parse(token);
 
         if (!expectedType.equals(c.get("type"))) {
-            throw new RuntimeException("Invalid token type");
+            throw new JwtException("Invalid token type");
         }
 
         if (!issuer.equals(c.getIssuer())) {
-            throw new RuntimeException("Invalid issuer");
+            throw new JwtValidationException("Invalid issuer");
         }
 
         if (!c.getAudience().contains(audience)) {
-            throw new RuntimeException("Invalid audience");
+            throw new JwtValidationException("Invalid audience");
         }
     }
 }
