@@ -49,13 +49,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public String login(LoginRequest request) {
 
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
         authManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
+                        normalizedEmail,
                         request.getPassword()
                 ));
 
-        User user = repo.findByEmail(request.getEmail())
+        User user = repo.findByEmail(normalizedEmail)
                 .orElseThrow();
 
         return jwt.generateAccessToken(
