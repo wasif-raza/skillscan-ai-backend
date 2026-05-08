@@ -38,13 +38,13 @@ public class AuthController {
     }
     // LOGIN
     @PostMapping("/login")
-    public AuthResponse login(@RequestBody LoginRequest req) {
+    public AuthResponse login(@Valid @RequestBody LoginRequest req) {
         return authService.login(req);
     }
     //  REFRESH
     @PostMapping("/refresh")
     public RefreshResponse refresh(
-            @RequestBody RefreshRequest request
+            @Valid @RequestBody RefreshRequest request
     ) {
         return authService.refresh(request);
     }
