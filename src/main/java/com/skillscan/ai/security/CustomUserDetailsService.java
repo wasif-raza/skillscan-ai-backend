@@ -15,6 +15,10 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) {
+        if (email == null || email.isBlank()) {
+            throw new UsernameNotFoundException("Email must not be empty");
+                   }
+
         String normalized = email.trim().toLowerCase(Locale.ROOT);
         var user = repo.findByEmail(normalized)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + normalized));

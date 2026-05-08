@@ -1,8 +1,11 @@
 package com.skillscan.ai.controller;
 
 import com.skillscan.ai.dto.request.LoginRequest;
+import com.skillscan.ai.dto.request.LogoutRequest;
 import com.skillscan.ai.dto.request.RefreshRequest;
 import com.skillscan.ai.dto.request.RegisterRequest;
+import com.skillscan.ai.dto.response.AuthResponse;
+import com.skillscan.ai.dto.response.RefreshResponse;
 import com.skillscan.ai.repository.UserRepository;
 import com.skillscan.ai.security.JwtTokenProvider;
 import com.skillscan.ai.services.AuthService;
@@ -35,29 +38,23 @@ public class AuthController {
     }
     // LOGIN
     @PostMapping("/login")
-    public Map<String, String> login(@RequestBody LoginRequest req) {
+    public AuthResponse login(@RequestBody LoginRequest req) {
         return authService.login(req);
     }
     //  REFRESH
     @PostMapping("/refresh")
-    public Map<String, String> refresh(@RequestBody RefreshRequest request) {
-
-        String refreshToken = request.getRefreshToken();
-
-        jwt.validate(refreshToken, "refresh");
-
-        return Map.of(
-                "accessToken", jwt.generateAccessToken(
-                        jwt.getUserId(refreshToken),
-                        jwt.getEmail(refreshToken),
-                        jwt.getRole(refreshToken)
-                )
-        );
+    public RefreshResponse refresh(
+            @RequestBody RefreshRequest request
+    ) {
+        return authService.refresh(request);
     }
 
     // LOGOUT
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(HttpServletRequest request) {
+    public ResponseEntity<String> logout(
+            HttpServletRequest request,
+           @Valid @RequestBody LogoutRequest logoutRequest
+    ) {
 
         String authHeader = request.getHeader("Authorization");
 
@@ -65,9 +62,12 @@ public class AuthController {
             return ResponseEntity.badRequest().body("No token found");
         }
 
-        String token = authHeader.substring(7);
+        String accessToken = authHeader.substring(7);
 
-        tokenBlacklistService.blacklistToken(token);
+        authService.logout(
+                accessToken,
+                logoutRequest.getRefreshToken()
+        );
 
         return ResponseEntity.ok("Logged out successfully");
     }

@@ -79,9 +79,11 @@ public class TokenBlacklistServiceImpl implements TokenBlacklistService {
             return Boolean.TRUE.equals(redisTemplate.hasKey(key));
 
         } catch (Exception e) {
-            // Fail-open decision (optional: change to fail-closed if needed)
+
             log.warn("Blacklist check failed", e);
-            return false;
+            throw new TokenBlacklistException(
+                    "Authentication service unavailable"
+            );
         }
     }
 
