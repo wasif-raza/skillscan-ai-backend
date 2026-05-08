@@ -1,10 +1,12 @@
 package com.skillscan.ai.security;
 
+import com.skillscan.ai.services.TokenBlacklistService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -16,6 +18,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwt;
     private final CustomUserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+
+        String path = request.getServletPath();
+        return path.equals("/api/auth/login")
+                || path.equals("/api/auth/register")
+                || path.equals("/api/auth/refresh");
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
@@ -28,29 +40,45 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = header.substring(7);
+        String token = header.substring(7).trim();
 
         try {
+
             jwt.validate(token, "access");
 
-            if (SecurityContextHolder.getContext().getAuthentication() == null){
+            if (tokenBlacklistService.isBlacklisted(token)) {
+                SecurityContextHolder.clearContext();
+                res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+
+
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 String email = jwt.getEmail(token);
 
-              var userDetails  =userDetailsService.loadUserByUsername(email);
+                var userDetails =
+                        userDetailsService.loadUserByUsername(email);
 
-            var auth = new UsernamePasswordAuthenticationToken(
-                    userDetails,
-                    null,
-                    userDetails.getAuthorities()
-            );
+                var auth = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
 
-            SecurityContextHolder.getContext().setAuthentication(auth);
-        }
+                auth.setDetails(
+                        new WebAuthenticationDetailsSource()
+                                .buildDetails(req));
+
+                SecurityContextHolder.getContext()
+                        .setAuthentication(auth);
+            }
+
         } catch (Exception e) {
             SecurityContextHolder.clearContext();
+            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
         }
-
         chain.doFilter(req, res);
     }
 }

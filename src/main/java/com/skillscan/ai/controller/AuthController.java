@@ -1,18 +1,22 @@
 package com.skillscan.ai.controller;
 
 import com.skillscan.ai.dto.request.LoginRequest;
+import com.skillscan.ai.dto.request.LogoutRequest;
+import com.skillscan.ai.dto.request.RefreshRequest;
 import com.skillscan.ai.dto.request.RegisterRequest;
-import com.skillscan.ai.exception.EmailAlreadyExistsException;
-import com.skillscan.ai.model.User;
-import com.skillscan.ai.model.enums.UserRole;
+import com.skillscan.ai.dto.response.AuthResponse;
+import com.skillscan.ai.dto.response.RefreshResponse;
 import com.skillscan.ai.repository.UserRepository;
 import com.skillscan.ai.security.JwtTokenProvider;
 import com.skillscan.ai.services.AuthService;
+import com.skillscan.ai.services.TokenBlacklistService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 
@@ -25,6 +29,7 @@ public class AuthController {
     private final UserRepository repo;
     private final JwtTokenProvider jwt;
     private final AuthService authService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     //  REGISTER
     @PostMapping("/register")
@@ -32,46 +37,39 @@ public class AuthController {
         authService.register(req);
         return Map.of("message", "User registered successfully");
     }
-
+    // LOGIN
     @PostMapping("/login")
-    public Map<String, String> login(@RequestBody LoginRequest req) {
-
-        //  Use Spring Security (not manual password check)
-        authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        req.getEmail(),
-                        req.getPassword()
-                )
-        );
-
-        var user = repo.findByEmail(req.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        return Map.of(
-                "accessToken", jwt.generateAccessToken(
-                        user.getId(),
-                        user.getEmail(),
-                        user.getRole()
-                ),
-                "refreshToken", jwt.generateRefreshToken(
-                        user.getId(),
-                        user.getEmail(),
-                        user.getRole()
-                )
-        );
+    public AuthResponse login(@Valid @RequestBody LoginRequest req) {
+        return authService.login(req);
+    }
+    //  REFRESH
+    @PostMapping("/refresh")
+    public RefreshResponse refresh(
+            @Valid @RequestBody RefreshRequest request
+    ) {
+        return authService.refresh(request);
     }
 
-    @PostMapping("/refresh")
-    public Map<String, String> refresh(@RequestParam String refreshToken) {
+    // LOGOUT
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(
+            HttpServletRequest request,
+           @Valid @RequestBody LogoutRequest logoutRequest
+    ) {
 
-        jwt.validate(refreshToken, "refresh");
+        String authHeader = request.getHeader("Authorization");
 
-        return Map.of(
-                "accessToken", jwt.generateAccessToken(
-                        jwt.getUserId(refreshToken),
-                        jwt.getEmail(refreshToken),
-                        jwt.getRole(refreshToken)
-                )
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No token found");
+        }
+
+        String accessToken = authHeader.substring(7);
+
+        authService.logout(
+                accessToken,
+                logoutRequest.getRefreshToken()
         );
+
+        return ResponseEntity.ok("Logged out successfully");
     }
 }
