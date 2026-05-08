@@ -1,10 +1,11 @@
 package com.skillscan.ai.controller;
 
 import com.skillscan.ai.dto.request.LoginRequest;
+import com.skillscan.ai.dto.request.LogoutRequest;
+import com.skillscan.ai.dto.request.RefreshRequest;
 import com.skillscan.ai.dto.request.RegisterRequest;
-import com.skillscan.ai.exception.EmailAlreadyExistsException;
-import com.skillscan.ai.model.User;
-import com.skillscan.ai.model.enums.UserRole;
+import com.skillscan.ai.dto.response.AuthResponse;
+import com.skillscan.ai.dto.response.RefreshResponse;
 import com.skillscan.ai.repository.UserRepository;
 import com.skillscan.ai.security.JwtTokenProvider;
 import com.skillscan.ai.services.AuthService;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 
@@ -37,62 +39,36 @@ public class AuthController {
     }
     // LOGIN
     @PostMapping("/login")
-    public Map<String, String> login(@RequestBody LoginRequest req) {
-
-        authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        req.getEmail(),
-                        req.getPassword()
-                )
-        );
-
-        var user = repo.findByEmail(req.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Map<String, String> response = new java.util.LinkedHashMap<>();
-
-        response.put("accessToken", jwt.generateAccessToken(
-                user.getId(),
-                user.getEmail(),
-                user.getRole()
-        ));
-
-        response.put("refreshToken", jwt.generateRefreshToken(
-                user.getId(),
-                user.getEmail(),
-                user.getRole()
-        ));
-
-        return response;
+    public AuthResponse login(@Valid @RequestBody LoginRequest req) {
+        return authService.login(req);
     }
     //  REFRESH
     @PostMapping("/refresh")
-    public Map<String, String> refresh(@RequestParam String refreshToken) {
-
-        jwt.validate(refreshToken, "refresh");
-
-        return Map.of(
-                "accessToken", jwt.generateAccessToken(
-                        jwt.getUserId(refreshToken),
-                        jwt.getEmail(refreshToken),
-                        jwt.getRole(refreshToken)
-                )
-        );
+    public RefreshResponse refresh(
+            @Valid @RequestBody RefreshRequest request
+    ) {
+        return authService.refresh(request);
     }
 
     // LOGOUT
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(HttpServletRequest request) {
+    public ResponseEntity<String> logout(
+            HttpServletRequest request,
+           @Valid @RequestBody LogoutRequest logoutRequest
+    ) {
 
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.badRequest().body("No token found");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No token found");
         }
 
-        String token = authHeader.substring(7);
+        String accessToken = authHeader.substring(7);
 
-        tokenBlacklistService.blacklistToken(token);
+        authService.logout(
+                accessToken,
+                logoutRequest.getRefreshToken()
+        );
 
         return ResponseEntity.ok("Logged out successfully");
     }
