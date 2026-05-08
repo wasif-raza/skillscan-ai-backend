@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
+
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
@@ -13,8 +15,13 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) {
-        var user = repo.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        if (email == null || email.isBlank()) {
+            throw new UsernameNotFoundException("Email must not be empty");
+                   }
+
+        String normalized = email.trim().toLowerCase(Locale.ROOT);
+        var user = repo.findByEmail(normalized)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + normalized));
         return new CustomUserDetails(user);
     }
 }

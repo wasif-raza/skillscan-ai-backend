@@ -78,6 +78,15 @@ public class JwtTokenProvider {
 
     public String getEmail(String token) {return parse(token).get("email", String.class);}
 
+    public Date getExpiration(String token) {
+        return parse(token).getExpiration();
+    }
+
+    public long getRemainingTime(String token) {
+        Date expiration = getExpiration(token);
+        return expiration.getTime() - System.currentTimeMillis();
+    }
+
     public void validate(String token, String expectedType) {
         Claims c = parse(token);
 
