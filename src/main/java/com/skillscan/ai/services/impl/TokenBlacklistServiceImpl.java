@@ -1,5 +1,7 @@
 package com.skillscan.ai.services.impl;
 
+import com.skillscan.ai.exception.TokenBlacklistException;
+import com.skillscan.ai.exception.TokenHashingException;
 import com.skillscan.ai.security.JwtTokenProvider;
 import com.skillscan.ai.services.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
@@ -28,14 +30,26 @@ public class TokenBlacklistServiceImpl implements TokenBlacklistService {
             return;
         }
 
-        try {
-            long expiry = jwt.getRemainingTime(token);
+        long expiry;
 
-            //  fallback to avoid failure on expired token
+
+        try {
+            expiry = jwt.getRemainingTime(token);
+
+            // Token already expired → nothing to blacklist
             if (expiry <= 0) {
-                expiry = 60_000; // 1 minute
+                log.debug("Token already expired, skipping blacklist");
+                return;
             }
 
+        } catch (Exception e) {
+            // Invalid / expired token → not a failure case
+            log.warn("Invalid or expired token during logout", e);
+            return;
+        }
+
+
+        try {
             String key = PREFIX + hashToken(token);
 
             redisTemplate.opsForValue().set(
@@ -46,8 +60,10 @@ public class TokenBlacklistServiceImpl implements TokenBlacklistService {
             );
 
         } catch (Exception e) {
-
-            log.warn("Failed to blacklist token: {}", e.getMessage());
+            log.error("Redis failure while blacklisting token", e);
+            throw new TokenBlacklistException(
+                    "Token could not be invalidated. Please try again."
+            );
         }
     }
 
@@ -63,12 +79,14 @@ public class TokenBlacklistServiceImpl implements TokenBlacklistService {
             return Boolean.TRUE.equals(redisTemplate.hasKey(key));
 
         } catch (Exception e) {
-            log.warn("Blacklist check failed: {}", e.getMessage());
+            // Fail-open decision (optional: change to fail-closed if needed)
+            log.warn("Blacklist check failed", e);
             return false;
         }
     }
 
     private String hashToken(String token) {
+
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
@@ -77,10 +95,14 @@ public class TokenBlacklistServiceImpl implements TokenBlacklistService {
             for (byte b : hash) {
                 hex.append(String.format("%02x", b));
             }
+
             return hex.toString();
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to hash token", e);
+            log.error("Token hashing failed", e);
+            throw new TokenHashingException(
+                    "Failed to process authentication token"
+            );
         }
     }
 }

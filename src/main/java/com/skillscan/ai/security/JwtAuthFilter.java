@@ -21,29 +21,33 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final TokenBlacklistService tokenBlacklistService;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return request.getServletPath().startsWith("/api/auth/");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
 
         String header = req.getHeader("Authorization");
 
-        // ✅ No token → continue
         if (header == null || !header.startsWith("Bearer ")) {
             chain.doFilter(req, res);
             return;
         }
 
-        String token = header.substring(7);
+        String token = header.substring(7).trim();
 
         try {
 
-            // ✅ FIX 1: Handle blacklist WITHOUT exception
+            jwt.validate(token, "access");
+
             if (tokenBlacklistService.isBlacklisted(token)) {
                 SecurityContextHolder.clearContext();
-                chain.doFilter(req, res);
+                res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
 
-            jwt.validate(token, "access");
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
 
@@ -57,18 +61,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         userDetails.getAuthorities()
                 );
 
-                // ✅ Optional but recommended
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
 
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
 
         } catch (Exception e) {
-            // ✅ FIX 2: DO NOT force response status
             SecurityContextHolder.clearContext();
+            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
         }
-
-        // ✅ ALWAYS continue
         chain.doFilter(req, res);
     }
 }
