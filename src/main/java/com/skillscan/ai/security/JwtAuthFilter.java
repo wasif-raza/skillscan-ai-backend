@@ -22,7 +22,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getServletPath().startsWith("/api/auth/");
+
+        String path = request.getServletPath();
+        return path.equals("/api/auth/login")
+                || path.equals("/api/auth/register")
+                || path.equals("/api/auth/refresh");
     }
 
     @Override
@@ -53,7 +57,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 String email = jwt.getEmail(token);
 
-                var userDetails = userDetailsService.loadUserByUsername(email);
+                var userDetails =
+                        userDetailsService.loadUserByUsername(email);
 
                 var auth = new UsernamePasswordAuthenticationToken(
                         userDetails,
@@ -61,9 +66,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         userDetails.getAuthorities()
                 );
 
-                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+                auth.setDetails(
+                        new WebAuthenticationDetailsSource()
+                                .buildDetails(req));
 
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                SecurityContextHolder.getContext()
+                        .setAuthentication(auth);
             }
 
         } catch (Exception e) {
