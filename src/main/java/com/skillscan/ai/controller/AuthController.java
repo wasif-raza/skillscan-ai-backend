@@ -1,10 +1,8 @@
 package com.skillscan.ai.controller;
 
 import com.skillscan.ai.dto.request.LoginRequest;
+import com.skillscan.ai.dto.request.RefreshRequest;
 import com.skillscan.ai.dto.request.RegisterRequest;
-import com.skillscan.ai.exception.EmailAlreadyExistsException;
-import com.skillscan.ai.model.User;
-import com.skillscan.ai.model.enums.UserRole;
 import com.skillscan.ai.repository.UserRepository;
 import com.skillscan.ai.security.JwtTokenProvider;
 import com.skillscan.ai.services.AuthService;
@@ -38,36 +36,13 @@ public class AuthController {
     // LOGIN
     @PostMapping("/login")
     public Map<String, String> login(@RequestBody LoginRequest req) {
-
-        authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        req.getEmail(),
-                        req.getPassword()
-                )
-        );
-
-        var user = repo.findByEmail(req.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Map<String, String> response = new java.util.LinkedHashMap<>();
-
-        response.put("accessToken", jwt.generateAccessToken(
-                user.getId(),
-                user.getEmail(),
-                user.getRole()
-        ));
-
-        response.put("refreshToken", jwt.generateRefreshToken(
-                user.getId(),
-                user.getEmail(),
-                user.getRole()
-        ));
-
-        return response;
+        return authService.login(req);
     }
     //  REFRESH
     @PostMapping("/refresh")
-    public Map<String, String> refresh(@RequestParam String refreshToken) {
+    public Map<String, String> refresh(@RequestBody RefreshRequest request) {
+
+        String refreshToken = request.getRefreshToken();
 
         jwt.validate(refreshToken, "refresh");
 
