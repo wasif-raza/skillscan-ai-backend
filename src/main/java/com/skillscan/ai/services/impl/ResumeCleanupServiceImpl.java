@@ -32,6 +32,7 @@ public class ResumeCleanupServiceImpl implements ResumeCleanupService {
     private static final int MAX_RETRIES = 3;
 
 
+
     @Override
     public void processExpiredResumes() {
 
