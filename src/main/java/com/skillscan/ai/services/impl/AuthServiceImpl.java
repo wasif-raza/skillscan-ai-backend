@@ -122,14 +122,24 @@ public class AuthServiceImpl implements AuthService {
             throw new JwtValidationException("Refresh token is invalid");
         }
 
+        // Blacklist old refresh token
+       tokenBlacklistService.blacklistToken(refreshToken);
+
+         String newAccessToken = jwt.generateAccessToken(
+            jwt.getUserId(refreshToken),
+            jwt.getEmail(refreshToken),
+            jwt.getRole(refreshToken)
+    );
+
+    String newRefreshToken = jwt.generateRefreshToken(
+            jwt.getUserId(refreshToken),
+            jwt.getEmail(refreshToken),
+            jwt.getRole(refreshToken)
+    );
+
         return RefreshResponse.builder()
-                .accessToken(
-                        jwt.generateAccessToken(
-                                jwt.getUserId(refreshToken),
-                                jwt.getEmail(refreshToken),
-                                jwt.getRole(refreshToken)
-                        )
-                )
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .build();
     }
 }
