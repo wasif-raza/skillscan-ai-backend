@@ -58,7 +58,7 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
-        log.info("User registered successfully: {}", normalizedEmail);
+         log.info("User registered successfully: userId={}", user.getId());
     }
 
     @Override
@@ -93,7 +93,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getRole()
         );
 
-        log.info("Login successful for: {}", normalizedEmail);
+         log.info("User registered successfully: userId={}", user.getId());
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
