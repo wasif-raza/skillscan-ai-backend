@@ -13,6 +13,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.*;
 import org.springframework.security.web.*;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 
 @Configuration
@@ -25,6 +30,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain chain(HttpSecurity http) throws Exception {
         return http
+                .cors(cors -> {})
                 .csrf(csrf -> csrf.disable())
 
                 .sessionManagement(sm -> sm
@@ -39,6 +45,45 @@ public class SecurityConfig {
                 .build();
     }
 
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+
+        CorsConfiguration config =
+                new CorsConfiguration();
+
+        config.setAllowedOrigins(
+                List.of(
+                        "http://localhost:5173"
+                )
+        );
+
+        config.setAllowedMethods(
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "PATCH",
+                        "OPTIONS"
+                )
+        );
+
+        config.setAllowedHeaders(
+                List.of("*")
+        );
+
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration(
+                "/**",
+                config
+        );
+
+        return source;
+    }
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
