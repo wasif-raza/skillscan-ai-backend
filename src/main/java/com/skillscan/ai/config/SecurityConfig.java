@@ -28,32 +28,82 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
 
     @Bean
-    public SecurityFilterChain chain(HttpSecurity http) throws Exception {
-        return http
-                .cors(cors -> {})
-                .csrf(csrf -> csrf.disable())
+    public SecurityFilterChain chain(
+            HttpSecurity http
+    ) throws Exception {
 
-                .sessionManagement(sm -> sm
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/auth/logout").authenticated()
-                        .anyRequest().authenticated()
+        return http
+
+                .cors(cors -> {})
+
+                .csrf(
+                        csrf ->
+                                csrf.disable()
                 )
-                .authenticationProvider(authenticationProvider())
-                .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
+
+                .sessionManagement(
+                        sm -> sm.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
+                .authorizeHttpRequests(
+                        auth -> auth
+
+                                // auth
+
+                                .requestMatchers(
+                                        "/api/auth/register",
+                                        "/api/auth/login",
+                                        "/api/auth/refresh"
+                                ).permitAll()
+
+                                .requestMatchers(
+                                        "/api/auth/logout"
+                                ).authenticated()
+
+
+                                // guest analysis
+
+                                .requestMatchers(
+                                        "/api/resumes/**"
+                                ).permitAll()
+
+                                .requestMatchers(
+                                        "/api/analysis/**"
+                                ).permitAll()
+
+
+                                // everything else
+
+                                .anyRequest()
+                                .authenticated()
+                )
+
+                .authenticationProvider(
+                        authenticationProvider()
+                )
+
+                .addFilterBefore(
+                        filter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
+
                 .build();
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource
+    corsConfigurationSource() {
 
         CorsConfiguration config =
                 new CorsConfiguration();
 
         config.setAllowedOrigins(
                 List.of(
-                        "http://localhost:5173"
+                        "http://localhost:3000",
+                        "http://localhost:3001",
+                        "http://localhost:3002"
                 )
         );
 
@@ -72,7 +122,9 @@ public class SecurityConfig {
                 List.of("*")
         );
 
-        config.setAllowCredentials(true);
+        config.setAllowCredentials(
+                true
+        );
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
@@ -84,21 +136,41 @@ public class SecurityConfig {
 
         return source;
     }
+
     @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
+    public AuthenticationProvider
+    authenticationProvider() {
+
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider();
+
+        provider.setUserDetailsService(
+                userDetailsService
+        );
+
+        provider.setPasswordEncoder(
+                passwordEncoder()
+        );
+
         return provider;
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    public PasswordEncoder
+    passwordEncoder() {
+
         return new BCryptPasswordEncoder();
+
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+    public AuthenticationManager
+    authenticationManager(
+            AuthenticationConfiguration config
+    ) throws Exception {
+
+        return config
+                .getAuthenticationManager();
+
     }
 }

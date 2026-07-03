@@ -46,9 +46,15 @@ server:
   port: 8081
 
 
-#Ollama
-ollama:
-  model: llama3
+#OpenRouterAPI
+openrouter:
+  api:
+    url: https://openrouter.ai/api/v1/chat/completions
+    key: REMOVED_SECRET
+  model: openai/gpt-4o
+  site:
+    url: https://your-site.com
+    name: SkillScan AI
 
 #Prometheus
 management:
