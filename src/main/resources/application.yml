@@ -50,7 +50,7 @@ server:
 openrouter:
   api:
     url: https://openrouter.ai/api/v1/chat/completions
-    key: REMOVED_SECRET
+    key: ${OPENROUTER_API_KEY}
   model: openrouter/free
   site:
     url: https://your-site.com
