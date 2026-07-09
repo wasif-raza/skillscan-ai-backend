@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public interface ResumeService {
 
-    ResumeUploadResponse uploadResume(UUID userId, MultipartFile file);
+    ResumeUploadResponse uploadResume( MultipartFile file);
 
     void deleteResumeFile(String filePath);
     // todo implement in feature

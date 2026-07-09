@@ -20,12 +20,11 @@ public class ResumeController {
     private final ResumeService resumeService;
 
     //  Upload Resume
-    @PostMapping("/{userId}")
+    @PostMapping
     public ResponseEntity<ResumeUploadResponse> uploadResume(
-            @PathVariable UUID userId,
             @RequestParam("file") MultipartFile file
     ) {
-        ResumeUploadResponse response = resumeService.uploadResume(userId, file);
+        ResumeUploadResponse response = resumeService.uploadResume( file);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(response);
     }

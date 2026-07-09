@@ -21,8 +21,16 @@ public class Resume {
     @UuidGenerator
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne(
+            fetch = FetchType.LAZY,
+            optional = true
+    )
+
+    @JoinColumn(
+            name = "user_id",
+            nullable = true
+    )
+
     private User user;
 
     @Column(name = "file_name")
