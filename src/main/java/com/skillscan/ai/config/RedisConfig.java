@@ -4,20 +4,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
-
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
-
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
-
 import org.springframework.data.redis.serializer.*;
 
 import java.time.Duration;
-
 @EnableCaching
 @Configuration
 public class RedisConfig {
@@ -28,130 +23,61 @@ public class RedisConfig {
     @Value("${spring.data.redis.port}")
     private int redisPort;
 
-
     @Bean
-    public RedisConnectionFactory
-    redisConnectionFactory() {
-
-        return new LettuceConnectionFactory(
-                redisHost,
-                redisPort
-        );
-
+    public RedisConnectionFactory redisConnectionFactory() {
+        return new LettuceConnectionFactory(redisHost, redisPort);
     }
 
-
     @Bean
-    public StringRedisTemplate
-    stringRedisTemplate(
-            RedisConnectionFactory connectionFactory
-    ) {
-
-        return new StringRedisTemplate(
-                connectionFactory
-        );
-
+    public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory connectionFactory) {
+        return new StringRedisTemplate(connectionFactory);
     }
 
+    @Bean
+    public RedisConnectionFactory redisConnectionFactory() {
+        return new LettuceConnectionFactory("localhost", 6379);
+    }
 
     @Bean
-    public RedisTemplate<String, Object>
-    redisTemplate(
-            RedisConnectionFactory connectionFactory
-    ) {
+    public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory connectionFactory) {
+        return new StringRedisTemplate(connectionFactory);
+    }
 
-        RedisTemplate<String, Object>
-                template =
-                new RedisTemplate<>();
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
 
-        template.setConnectionFactory(
-                connectionFactory
-        );
+        template.setConnectionFactory(connectionFactory);
 
-        template.setKeySerializer(
-                new StringRedisSerializer()
-        );
+        // Key serializer
+        template.setKeySerializer(new StringRedisSerializer());
 
-        template.setValueSerializer(
-                new GenericJackson2JsonRedisSerializer()
-        );
+        // Value serializer (JSON)
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
 
-        template.setHashKeySerializer(
-                new StringRedisSerializer()
-        );
-
-        template.setHashValueSerializer(
-                new GenericJackson2JsonRedisSerializer()
-        );
+        template.setHashKeySerializer(new StringRedisSerializer());
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
 
         template.afterPropertiesSet();
-
         return template;
-
     }
-
-
     @Bean
-    public RedisCacheManager
-    cacheManager(
-            RedisConnectionFactory connectionFactory
-    ) {
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
 
-        RedisSerializationContext
-                .SerializationPair<String>
-                keySerializer =
+        RedisSerializationContext.SerializationPair<String> keySerializer =
+                RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer());
 
-                RedisSerializationContext
-                        .SerializationPair
-                        .fromSerializer(
-                                new StringRedisSerializer()
-                        );
+        RedisSerializationContext.SerializationPair<Object> valueSerializer =
+                RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer());
 
+        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+                .serializeKeysWith(keySerializer)
+                .serializeValuesWith(valueSerializer)
+                .entryTtl(Duration.ofMinutes(10))
+                .disableCachingNullValues();
 
-        RedisSerializationContext
-                .SerializationPair<Object>
-                valueSerializer =
-
-                RedisSerializationContext
-                        .SerializationPair
-                        .fromSerializer(
-                                new GenericJackson2JsonRedisSerializer()
-                        );
-
-
-        RedisCacheConfiguration config =
-
-                RedisCacheConfiguration
-                        .defaultCacheConfig()
-
-                        .serializeKeysWith(
-                                keySerializer
-                        )
-
-                        .serializeValuesWith(
-                                valueSerializer
-                        )
-
-                        .entryTtl(
-                                Duration.ofMinutes(
-                                        10
-                                )
-                        )
-
-                        .disableCachingNullValues();
-
-
-        return RedisCacheManager
-                .builder(
-                        connectionFactory
-                )
-
-                .cacheDefaults(
-                        config
-                )
-
+        return RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(config)
                 .build();
-
     }
-
 }

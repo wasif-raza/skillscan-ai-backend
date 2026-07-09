@@ -21,24 +21,13 @@ public class OpenAIClient {
 
     private final RestTemplate restTemplate;
 
-    @Value("${openrouter.api.url}")
-    private String apiUrl;
-
-    @Value("${openrouter.api.key}")
-    private String apiKey;
-
-    @Value("${openrouter.model}")
+    @Value("${ollama.model:llama3}")
     private String model;
-
-    @Value("${openrouter.site.url}")
-    private String siteUrl;
-
-    @Value("${openrouter.site.name}")
-    private String siteName;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(JsonParser.Feature.ALLOW_COMMENTS, true);
 
+    private static final String OLLAMA_URL = "http://localhost:11434/api/generate";
 
     public AIResponse callAI(String prompt) {
 
@@ -48,7 +37,7 @@ public class OpenAIClient {
                 HttpEntity<Map<String, Object>> entity = buildRequestEntity(prompt);
 
                 ResponseEntity<Map> response = restTemplate.exchange(
-                        apiUrl,
+                        OLLAMA_URL,
                         HttpMethod.POST,
                         entity,
                         Map.class
@@ -83,49 +72,33 @@ public class OpenAIClient {
     //  Build request
     private HttpEntity<Map<String, Object>> buildRequestEntity(String prompt) {
 
-        Map<String, Object> message = Map.of(
-                "role", "user",
-                "content", prompt
-        );
-
         Map<String, Object> body = Map.of(
                 "model", model,
-                "messages", List.of(message)
+                "prompt", prompt,
+                "stream", false,
+                "options", Map.of("temperature", 0.1)
         );
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(apiKey);
-        headers.set("HTTP-Referer", siteUrl);
-        headers.set("X-Title", siteName);
-
 
         return new HttpEntity<>(body, headers);
     }
 
     //  Extract response
-    @SuppressWarnings("unchecked")
     private String extractResponse(ResponseEntity<Map> response) {
 
         if (response.getBody() == null) {
-            throw new IllegalStateException("Empty response from OpenRouter");
+            throw new IllegalStateException("Empty response from LLM");
         }
 
-        List<Map<String, Object>> choices =
-                (List<Map<String, Object>>) response.getBody().get("choices");
+        Object res = response.getBody().get("response");
 
-        if (choices == null || choices.isEmpty()) {
-            throw new IllegalStateException("No choices returned");
+        if (res == null) {
+            throw new IllegalStateException("Missing 'response' field");
         }
 
-        Map<String, Object> message =
-                (Map<String, Object>) choices.get(0).get("message");
-
-        if (message == null || message.get("content") == null) {
-            throw new IllegalStateException("Missing content");
-        }
-
-        return message.get("content").toString();
+        return res.toString();
     }
 
     //  Clean text
