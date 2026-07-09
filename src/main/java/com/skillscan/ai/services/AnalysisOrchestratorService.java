@@ -5,5 +5,9 @@ import com.skillscan.ai.dto.response.AIResponse;
 
 public interface AnalysisOrchestratorService {
 
-     AIResponse analyze(AnalysisRequestDTO request);
+
+    public AIResponse analyze(
+            AnalysisRequestDTO request,
+            boolean guest
+    );
 }
