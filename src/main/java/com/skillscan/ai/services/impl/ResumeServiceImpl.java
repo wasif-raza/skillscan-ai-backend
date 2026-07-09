@@ -93,7 +93,8 @@ public class ResumeServiceImpl implements ResumeService {
             user =
                     userRepository
                             .findByEmail(email)
-                            .orElse(null);
+                            .orElseThrow(()-> new BaseException("Authenticated user not found",
+                                    HttpStatus.UNAUTHORIZED));
 
         }
 
@@ -291,8 +292,7 @@ public class ResumeServiceImpl implements ResumeService {
             );
 
             throw new BaseException(
-                    "Failed to upload resume: "
-                            + ex.getMessage(),
+                    "Failed to upload resume ",
                     HttpStatus
                             .INTERNAL_SERVER_ERROR
             );
