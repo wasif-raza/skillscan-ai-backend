@@ -18,6 +18,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.util.unit.DataSize;
@@ -63,85 +65,240 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
-    public ResumeUploadResponse uploadResume(UUID userId, MultipartFile file) {
+    public ResumeUploadResponse uploadResume(
+            MultipartFile file
+    ) {
 
-        //  Validate user
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        Authentication auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
 
-        //  Validate file
+        User user = null;
+
+        boolean loggedIn =
+                auth != null
+                        &&
+                        auth.isAuthenticated()
+                        &&
+                        !"anonymousUser".equals(
+                                auth.getPrincipal()
+                        );
+
+        if (loggedIn) {
+
+            String email =
+                    auth.getName();
+
+            user =
+                    userRepository
+                            .findByEmail(email)
+                            .orElseThrow(()-> new BaseException("Authenticated user not found",
+                                    HttpStatus.UNAUTHORIZED));
+
+        }
+
+        // Validate file
+
         validateFile(file);
 
-        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+        String originalFileName =
+                StringUtils.cleanPath(
+                        file.getOriginalFilename()
+                );
 
-        //  Prevent path traversal
-        if (originalFileName.contains("..")) {
-            throw new BadRequestException("Invalid file path");
+        // Prevent path traversal
+
+        if (
+                originalFileName
+                        .contains("..")
+        ) {
+
+            throw new BadRequestException(
+                    "Invalid file path"
+            );
+
         }
 
-        // Generate unique filename
-        String safeFileName= UUID.randomUUID() + ".pdf";
+        // Generate filename
 
-        //  Resolve secure path
-        Path targetLocation = uploadPath.resolve(safeFileName).normalize();
+        String safeFileName =
+                UUID.randomUUID()
+                        + ".pdf";
 
-        // Check file stays inside upload directory
-        if (!targetLocation.startsWith(uploadPath)) {
-            throw new BadRequestException("Invalid file path");
+        Path targetLocation =
+                uploadPath
+                        .resolve(
+                                safeFileName
+                        )
+                        .normalize();
+
+        if (
+                !targetLocation
+                        .startsWith(
+                                uploadPath
+                        )
+        ) {
+
+            throw new BadRequestException(
+                    "Invalid file path"
+            );
+
         }
 
-        try(InputStream is  = file.getInputStream()) {
+        try (
+                InputStream is =
+                        file.getInputStream()
+        ) {
 
-            //  Save file
-            Files.copy(is, targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(
+                    is,
+                    targetLocation,
+                    StandardCopyOption
+                            .REPLACE_EXISTING
+            );
 
             String extractedText = "";
-            try {
-                extractedText = parserService.extractText(targetLocation);
 
-                if (extractedText.isBlank()) {
-                    log.info("Resume parsed but content is empty: {}", targetLocation);
+            try {
+
+                extractedText =
+                        parserService
+                                .extractText(
+                                        targetLocation
+                                );
+
+                if (
+                        extractedText
+                                .isBlank()
+                ) {
+
+                    log.info(
+                            "Resume parsed but empty: {}",
+                            targetLocation
+                    );
+
                 }
+
                 int maxLength = 10000;
 
-                if (extractedText.length() > maxLength) {
-                    extractedText = extractedText.substring(0, maxLength);
-                    log.info("Resume content truncated to {} characters", maxLength);
+                if (
+                        extractedText.length()
+                                > maxLength
+                ) {
+
+                    extractedText =
+                            extractedText
+                                    .substring(
+                                            0,
+                                            maxLength
+                                    );
+
+                    log.info(
+                            "Content truncated"
+                    );
+
                 }
 
-            } catch (Exception e) {
-                // Parsing should NOT break upload
-                log.warn("Parsing failed for file: {}", targetLocation, e);
             }
 
+            catch (Exception e) {
 
-            //  Save metadata
-            Resume resume = Resume.builder()
-                    .user(user)
-                    .fileName(originalFileName)
-                    .fileType(PDF_CONTENT_TYPE)
-                    .filePath(targetLocation.toString())
-                    .uploadedAt(LocalDateTime.now())
-                    .expiryTime(LocalDateTime.now().plusHours(24))
-                    .status(ResumeStatus.ACTIVE)
-                    .content(extractedText)
-                    .build();
+                log.warn(
+                        "Parsing failed: {}",
+                        targetLocation,
+                        e
+                );
 
-           Resume savedResume = resumeRepository.save(resume);
-            return ResumeMapper.toDTO(savedResume, "Resume uploaded successfully");
-
-        } catch (Exception ex) {
-
-            //  Cleanup file if DB save fails
-            try {
-                Files.deleteIfExists(targetLocation);
-            } catch (IOException cleanupEx) {
-                log.error("Failed to delete file during cleanup: {}", targetLocation);
             }
-            log.error("Resume upload failed for userId: {}", userId, ex);
-            throw new BaseException("Failed to upload resume: " + ex.getMessage(),
-                    HttpStatus.INTERNAL_SERVER_ERROR);
+
+            Resume resume =
+                    Resume.builder()
+
+                            // null for guest
+                            .user(user)
+
+                            .fileName(
+                                    originalFileName
+                            )
+
+                            .fileType(
+                                    PDF_CONTENT_TYPE
+                            )
+
+                            .filePath(
+                                    targetLocation
+                                            .toString()
+                            )
+
+                            .uploadedAt(
+                                    LocalDateTime.now()
+                            )
+
+                            .expiryTime(
+                                    LocalDateTime.now()
+                                            .plusHours(
+                                                    24
+                                            )
+                            )
+
+                            .status(
+                                    ResumeStatus.ACTIVE
+                            )
+
+                            .content(
+                                    extractedText
+                            )
+
+                            .build();
+
+            Resume savedResume =
+                    resumeRepository
+                            .save(
+                                    resume
+                            );
+
+            return ResumeMapper.toDTO(
+                    savedResume,
+                    "Resume uploaded successfully"
+            );
+
         }
+
+        catch (Exception ex) {
+
+            try {
+
+                Files.deleteIfExists(
+                        targetLocation
+                );
+
+            }
+
+            catch (
+                    IOException cleanupEx
+            ) {
+
+                log.error(
+                        "Cleanup failed: {}",
+                        targetLocation
+                );
+
+            }
+
+            log.error(
+                    "Resume upload failed",
+                    ex
+            );
+
+            throw new BaseException(
+                    "Failed to upload resume ",
+                    HttpStatus
+                            .INTERNAL_SERVER_ERROR
+            );
+
+        }
+
     }
     // File deletion logic (used by UserService)
     @Override
