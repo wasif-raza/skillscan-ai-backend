@@ -86,28 +86,51 @@ public class LLMServiceImpl implements LLMService {
     private String buildPrompt(String resumeText, String jd) {
         return """
         You are an AI resume analyzer.
-
+        
         TASK:
-        Analyze the resume and (if provided) job description.
-
-        Return ONLY valid JSON (no extra text):
-
+        Analyze the resume and (if provided) the job description.
+        
+        Return ONLY ONE valid JSON object.
+        
+        Rules:
+        - Return ONLY valid JSON.
+        - Do NOT use markdown.
+        - Do NOT wrap the response in ```json.
+        - Do NOT include explanations or any extra text.
+        - The output must be valid JSON parseable by Jackson ObjectMapper.
+        - All strings must use double quotes.
+        - Arrays must be valid JSON arrays.
+        - If there are no skills or suggestions, return an empty array [].
+        
+        JSON Schema:
+        
         {
           "score": number (0-100),
-          "skills": [],
-          "suggestions": []
+          "skills": [
+            "skill1",
+            "skill2"
+          ],
+          "suggestions": [
+            "suggestion1",
+            "suggestion2"
+          ]
         }
-
+        
+        Requirements:
+        - score must be a numeric value between 0 and 100.
+        - skills must contain only professional technical skills.
+        - suggestions must contain concise, actionable resume improvement recommendations.
+        
         RESUME:
         %s
-
+        
         JOB DESCRIPTION:
         %s
         """.formatted(
-                resumeText == null ? "" : resumeText,
-                jd == null ? "" : jd
-        );
-    }
+                        resumeText == null ? "" : resumeText,
+                        jd == null ? "" : jd
+                );
+            }
 
     //  Fallback
     private AIResponse fallback() {
