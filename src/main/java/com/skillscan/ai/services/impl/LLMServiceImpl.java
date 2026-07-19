@@ -100,12 +100,13 @@ public class LLMServiceImpl implements LLMService {
         - The output must be valid JSON parseable by Jackson ObjectMapper.
         - All strings must use double quotes.
         - Arrays must be valid JSON arrays.
+        - Do NOT include any keys other than "score", "skills", and "suggestions".
         - If there are no skills or suggestions, return an empty array [].
         
         JSON Schema:
         
         {
-          "score": number (0-100),
+          "score": 85,
           "skills": [
             "skill1",
             "skill2"
