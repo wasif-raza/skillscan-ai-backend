@@ -59,10 +59,6 @@ public class OpenAIClient {
                 log.debug("LLM preview={}",
                         responseText.substring(0, Math.min(200, responseText.length())));
 
-                log.info("===== RAW LLM RESPONSE =====");
-                log.info(responseText);
-                log.info("============================");
-
                 String cleanJson = extractJson(sanitizeJson(responseText));
 
                 return parseSafe(cleanJson);
